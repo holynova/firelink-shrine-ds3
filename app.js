@@ -12,33 +12,33 @@ renderer.toneMappingExposure = 1.32;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x14161c);
-scene.fog = new THREE.Fog(0x14161c, 38, 85);
+scene.fog = new THREE.Fog(0x14161c, 38, 90);
 
-const camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, 0.1, 300);
-camera.position.set(14, 9, 17);
+const camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, 0.1, 400);
+camera.position.set(17, 11, 21);
 
 const controls = new OrbitControls(camera, canvas);
-controls.target.set(2, 2.5, -1);
+controls.target.set(2, 3, -2);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
 controls.maxPolarAngle = Math.PI * 0.495;
 controls.minDistance = 1.5;
-controls.maxDistance = 45;
+controls.maxDistance = 55;
 controls.autoRotateSpeed = 1.0;
 
 const hemi = new THREE.HemisphereLight(0x8f9fbb, 0x4a4238, 1.2);
 scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xdde6f7, 1.9);
-sun.position.set(-12, 18, 8);
+sun.position.set(-14, 20, 10);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.left = -18; sun.shadow.camera.right = 18;
-sun.shadow.camera.top = 18; sun.shadow.camera.bottom = -18;
-sun.shadow.camera.far = 60;
+sun.shadow.camera.left = -38; sun.shadow.camera.right = 38;
+sun.shadow.camera.top = 38; sun.shadow.camera.bottom = -38;
+sun.shadow.camera.far = 80;
 sun.shadow.bias = -0.0006;
 scene.add(sun);
 
-/* ============ 程序化纹理 ============ */
+/* ============ 程序化纹理（旧化） ============ */
 function canvasTex(size, draw, rx = 1, ry = 1) {
   const c = document.createElement('canvas');
   c.width = c.height = size;
@@ -53,21 +53,61 @@ function canvasTex(size, draw, rx = 1, ry = 1) {
 let _s = 23;
 function rnd() { _s = (_s * 16807) % 2147483647; return (_s - 1) / 2147483646; }
 
-const stoneTex = canvasTex(256, (g, s) => {
-  g.fillStyle = '#4b4e57'; g.fillRect(0, 0, s, s);
-  for (let y = 0; y < s; y += 42) {
-    for (let x = 0; x < s; x += 64) {
-      const ox = (y / 42 % 2) * 32;
-      const v = 62 + rnd() * 22;
-      g.fillStyle = `rgb(${v | 0},${v + 3 | 0},${v + 9 | 0})`;
-      g.fillRect(x + ox - 32, y + 2, 60, 38);
-      g.fillStyle = 'rgba(0,0,0,.28)';
-      for (let i = 0; i < 14; i++) g.fillRect(x + ox - 32 + rnd() * 58, y + 2 + rnd() * 36, 3, 3);
+// 旧化石材：石块 + 裂缝 + 苔斑（行高/底色可调）
+function stoneDraw(rowH, base) {
+  return (g, s) => {
+    g.fillStyle = base; g.fillRect(0, 0, s, s);
+    for (let y = 0; y < s; y += rowH) {
+      for (let x = 0; x < s; x += 64) {
+        const ox = (y / rowH % 2) * 32;
+        const v = 62 + rnd() * 22;
+        g.fillStyle = `rgb(${v | 0},${v + 3 | 0},${v + 9 | 0})`;
+        g.fillRect(x + ox - 32, y + 2, 60, rowH - 4);
+        g.fillStyle = 'rgba(0,0,0,.28)';
+        for (let i = 0; i < 14; i++) g.fillRect(x + ox - 32 + rnd() * 58, y + 2 + rnd() * (rowH - 6), 3, 3);
+      }
     }
+    g.strokeStyle = 'rgba(15,15,18,.85)'; g.lineWidth = 3;
+    for (let y = 0; y <= s; y += rowH) { g.beginPath(); g.moveTo(0, y); g.lineTo(s, y); g.stroke(); }
+    g.strokeStyle = 'rgba(10,10,12,.7)'; g.lineWidth = 1.5;
+    for (let i = 0; i < 7; i++) {
+      let x = rnd() * s, y = rnd() * s;
+      g.beginPath(); g.moveTo(x, y);
+      for (let k = 0; k < 6; k++) { x += (rnd() - .5) * 36; y += rnd() * 26; g.lineTo(x, y); }
+      g.stroke();
+    }
+    for (let i = 0; i < 26; i++) {
+      g.fillStyle = `rgba(${52 + rnd() * 20 | 0},${84 + rnd() * 22 | 0},44,${.18 + rnd() * .22})`;
+      g.beginPath(); g.ellipse(rnd() * s, rnd() * s, 4 + rnd() * 12, 3 + rnd() * 8, rnd() * 3, 0, 7); g.fill();
+    }
+  };
+}
+const stoneTex = canvasTex(256, stoneDraw(42, '#4b4e57'), 3, 2);
+// 穹顶：只有水平石层、无竖向分缝，像石板瓦
+const domeTex = canvasTex(256, (g, s) => {
+  g.fillStyle = '#5a5750'; g.fillRect(0, 0, s, s);
+  for (let y = 0; y < s; y += 64) {
+    const v = 80 + rnd() * 18;
+    g.fillStyle = `rgb(${v | 0},${v + 2 | 0},${v + 7 | 0})`;
+    g.fillRect(0, y + 2, s, 60);
   }
-  g.strokeStyle = 'rgba(15,15,18,.85)'; g.lineWidth = 3;
-  for (let y = 0; y <= s; y += 42) { g.beginPath(); g.moveTo(0, y); g.lineTo(s, y); g.stroke(); }
-}, 3, 2);
+  g.strokeStyle = 'rgba(15,15,18,.8)'; g.lineWidth = 3;
+  for (let y = 0; y <= s; y += 64) { g.beginPath(); g.moveTo(0, y); g.lineTo(s, y); g.stroke(); }
+  g.fillStyle = 'rgba(0,0,0,.18)';
+  for (let i = 0; i < 350; i++) g.fillRect(rnd() * s, rnd() * s, 3, 3);
+  g.strokeStyle = 'rgba(10,10,12,.6)'; g.lineWidth = 1.5;
+  for (let i = 0; i < 6; i++) {
+    let x = rnd() * s, y = rnd() * s;
+    g.beginPath(); g.moveTo(x, y);
+    for (let k = 0; k < 6; k++) { x += (rnd() - .5) * 36; y += rnd() * 26; g.lineTo(x, y); }
+    g.stroke();
+  }
+  for (let i = 0; i < 22; i++) {
+    g.fillStyle = `rgba(${52 + rnd() * 20 | 0},${84 + rnd() * 22 | 0},44,${.15 + rnd() * .2})`;
+    g.beginPath(); g.ellipse(rnd() * s, rnd() * s, 4 + rnd() * 12, 3 + rnd() * 8, rnd() * 3, 0, 7); g.fill();
+  }
+}, 6, 2);
+// 旧化木材
 const darkWoodTex = canvasTex(256, (g, s) => {
   g.fillStyle = '#3d2c1c'; g.fillRect(0, 0, s, s);
   for (let x = 0; x < s; x += 32) {
@@ -78,7 +118,9 @@ const darkWoodTex = canvasTex(256, (g, s) => {
     g.strokeStyle = 'rgba(20,12,5,.5)'; g.lineWidth = 1;
     for (let i = 0; i < 3; i++) { const gx = x + 6 + rnd() * 20; g.beginPath(); g.moveTo(gx, 0); g.bezierCurveTo(gx + 4, s * .3, gx - 4, s * .6, gx + 2, s); g.stroke(); }
   }
+  for (let i = 0; i < 12; i++) { g.fillStyle = 'rgba(0,0,0,.3)'; g.fillRect(rnd() * s, rnd() * s, 8 + rnd() * 20, 3); }
 }, 2, 2);
+// 地面：碎石土
 const groundTex = canvasTex(256, (g, s) => {
   g.fillStyle = '#2c2d31'; g.fillRect(0, 0, s, s);
   for (let i = 0; i < 2200; i++) {
@@ -86,7 +128,24 @@ const groundTex = canvasTex(256, (g, s) => {
     g.fillStyle = `rgba(${v | 0},${v | 0},${v + 4 | 0},.6)`;
     g.fillRect(rnd() * s, rnd() * s, 2 + rnd() * 4, 2 + rnd() * 3);
   }
-}, 16, 16);
+  for (let i = 0; i < 20; i++) {
+    g.fillStyle = `rgba(58,92,50,${.12 + rnd() * .2})`;
+    g.beginPath(); g.ellipse(rnd() * s, rnd() * s, 5 + rnd() * 14, 4 + rnd() * 9, rnd() * 3, 0, 7); g.fill();
+  }
+}, 18, 18);
+// 王座铭文（伪卢恩刻字）
+const runeTex = canvasTex(128, (g, s) => {
+  g.fillStyle = '#3a3d45'; g.fillRect(0, 0, s, s);
+  g.strokeStyle = 'rgba(20,20,24,.9)'; g.lineWidth = 3;
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 5; c++) {
+    const x = 12 + c * 22, y = 16 + r * 28;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + 16); g.stroke();
+    for (let k = 0; k < 3; k++) {
+      g.beginPath(); g.moveTo(x, y + 4 + k * 5);
+      g.lineTo(x + (rnd() > .5 ? 8 : -8), y + 7 + k * 5); g.stroke();
+    }
+  }
+});
 
 /* ============ 材质与建模助手 ============ */
 function M(color, o = {}) {
@@ -97,7 +156,7 @@ function M(color, o = {}) {
     side: o.side || THREE.FrontSide
   });
 }
-const extMats = [];   // 外墙材质（透视模式下变透明）
+const extMats = [];
 function extM(color, o = {}) { const m = M(color, o); extMats.push(m); return m; }
 
 function mesh(geo, material, x, y, z, parent) {
@@ -128,6 +187,7 @@ function tagPart(m, parent) {
     n = n.parent;
   }
 }
+// 两点之间的墙体（轴对齐）
 function wallSeg(x1, z1, x2, z2, y0, h, t, material, parent) {
   const len = Math.hypot(x2 - x1, z2 - z1);
   const cx = (x1 + x2) / 2, cz = (z1 + z2) / 2;
@@ -135,10 +195,59 @@ function wallSeg(x1, z1, x2, z2, y0, h, t, material, parent) {
     ? box(len, h, t, material, cx, y0 + h / 2, cz, parent)
     : box(t, h, len, material, cx, y0 + h / 2, cz, parent);
 }
+// 拱门：门柱 + 半圆拱环 + 深色背衬
+function arch(w, h, mat, x, y, z, parent, ry = 0, dark = true) {
+  const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = ry; parent.add(g);
+  box(0.55, h, 0.7, mat, -w / 2 + 0.27, h / 2, 0, g);
+  box(0.55, h, 0.7, mat, w / 2 - 0.27, h / 2, 0, g);
+  const ring = mesh(new THREE.TorusGeometry(w / 2 - 0.28, 0.3, 8, 14, Math.PI), mat, 0, h, 0, g);
+  ring.castShadow = true;
+  if (dark) { const b = box(w - 0.4, h + w / 2 - 0.3, 0.15, M(0x0b0c10, { rough: 1 }), 0, (h + w / 2 - 0.3) / 2, -0.28, g); b.castShadow = false; }
+  return g;
+}
+// 蜡烛
+const candleWaxM = M(0xd8cfae, { rough: 0.6 });
+const flameM = M(0xffb13e, { emissive: 0xff9a1e, ei: 2.2, rough: 1 });
+function candle(x, y, z, parent, s = 1) {
+  cyl(0.035 * s, 0.05 * s, 0.3 * s, candleWaxM, x, y + 0.15 * s, z, parent, 8);
+  const f = sph(0.04 * s, flameM, x, y + 0.36 * s, z, parent);
+  f.castShadow = false;
+  return f;
+}
+function candleRow(x1, z1, x2, z2, y, parent, n, s = 1) {
+  for (let i = 0; i < n; i++) {
+    const t = n === 1 ? 0.5 : i / (n - 1);
+    candle(x1 + (x2 - x1) * t, y, z1 + (z2 - z1) * t, parent, s * (0.85 + rnd() * 0.4));
+  }
+}
+// 简笔人形（NPC剪影）
+function figure(x, y, z, parent, robeColor, h = 1.7, seated = false) {
+  const g = new THREE.Group(); g.position.set(x, y, z); parent.add(g);
+  const rm = M(robeColor, { rough: 1 });
+  if (seated) {
+    box(0.55, 0.5, 0.5, rm, 0, 0.25, 0, g);
+    sph(0.16, M(0xb09a80, { rough: 1 }), 0, 0.68, 0.05, g);
+    box(0.5, 0.35, 0.45, rm, 0, 0.62, -0.1, g);
+  } else {
+    cyl(0.26, 0.44, h * 0.72, rm, 0, h * 0.36, 0, g, 10);
+    sph(0.16, M(0xb09a80, { rough: 1 }), 0, h * 0.82, 0, g);
+  }
+  return g;
+}
+// 剑
+const steelM = M(0x9aa2ad, { metal: 0.75, rough: 0.35 });
+const guardM = M(0x5a4a28, { metal: 0.5, rough: 0.5 });
+function sword(x, y, z, parent, len = 1.1, tiltZ = 0, tiltX = 0) {
+  const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.z = tiltZ; g.rotation.x = tiltX; parent.add(g);
+  box(0.07, len, 0.022, steelM, 0, len / 2, 0, g);
+  box(0.24, 0.05, 0.05, guardM, 0, 0.03, 0, g);
+  cyl(0.035, 0.035, 0.16, guardM, 0, -0.06, 0, g, 8);
+  return g;
+}
 
 /* ============ 部件注册表 ============ */
 const PARTS = {};
-const CATS = { out: '外部', hall: '主厅', tower: '钟塔', yard: '室外' };
+const CATS = { out: '外部', hall: '主厅', under: '下层', tower: '塔楼' };
 function defPart(id, meta) { PARTS[id] = Object.assign({ id, group: null }, meta); }
 function P(id, parent) {
   const g = new THREE.Group();
@@ -148,378 +257,636 @@ function P(id, parent) {
   return g;
 }
 
-defPart('church',   { name: '教堂外观', cat: 'out', layer: 'hall', label: [-5.4, 3.2, 1], viewDir: [-1, .5, .6], desc: '风化的石砌小教堂，墙体残破、布满岁月痕迹。这里是余烬们的避风港，也是所有旅途的起点与终点。' });
-defPart('roof',     { name: '破损屋顶', cat: 'out', layer: 'roof', label: [0, 7.2, 0], viewDir: [1, .7, 1], desc: '人字形屋顶早已部分坍塌，露出焦黑的木梁。微光从破洞洒进主厅——这座祭祀场连屋顶都在诉说火焰将熄。' });
-defPart('steps',    { name: '石阶入口', cat: 'out', layer: 'hall', label: [0, 1.6, 6.4], viewDir: [.3, .45, 1], desc: '通往教堂正门的石阶。无数不死人曾拾级而上，推开那扇沉重的木门，坐到篝火旁。' });
-defPart('bonfire',  { name: '中央篝火', cat: 'hall', layer: 'hall', xray: 1, label: [0, 2.6, 0.8], viewDir: [.7, .55, 1], desc: '螺旋剑插于灰烬之中，余火不熄。坐下吧，灰烬——在这里休整，补充元素瓶，然后继续前行。' });
-defPart('thrones',  { name: '王座之间', cat: 'hall', layer: 'hall', xray: 1, label: [0, 3.4, -3.4], viewDir: [0, .5, 1], desc: '半圆形高台上的四张大王座，属于薪王们：深渊的监视者、巨人尤姆、圣女艾尔德利奇……如今王座空悬，薪王们不知去向。' });
-defPart('ludleth',  { name: '鲁道斯的小王座', cat: 'hall', layer: 'hall', xray: 1, label: [2.6, 2.2, -2.6], viewDir: [1, .5, .8], desc: '那张格外小巧的王座属于鲁道斯——自愿成为薪王的流放者。他总说：坐下吧，聊聊天也好。' });
-defPart('andre',    { name: '铁匠安德烈', cat: 'hall', layer: 'hall', xray: 1, label: [3.7, 2.4, -1.5], viewDir: [1, .5, .5], desc: '角落里的铁砧从未冷却。安德烈一边打铁一边唠叨：又死了吗？没关系，武器可不能钝了。' });
-defPart('handmaid', { name: '祭祀场侍女', cat: 'hall', layer: 'hall', xray: 1, label: [-3.9, 2.2, 0.5], viewDir: [-1, .5, .6], desc: '坐在角落里的老婆婆，用灵魂与你交易。她低语道：灰烬大人，需要什么就尽管说吧……' });
-defPart('brazier',  { name: '火盆', cat: 'hall', layer: 'hall', xray: 1, label: [-3, 2.0, -3], viewDir: [-1, .6, -.6], desc: '墙边的火盆终年不熄，是这座祭祀场里少数还活着的光。' });
-defPart('tower',    { name: '钟塔', cat: 'tower', layer: 'tower', label: [8.5, 8.5, -4], viewDir: [1, .45, .8], desc: '祭祀场后方的独立高塔，木梯盘旋而上。塔顶的大钟早已无人敲响，只有乌鸦还记得它的声音。' });
-defPart('bell',     { name: '大钟', cat: 'tower', layer: 'tower', xray: 1, label: [8.5, 10.6, -4], viewDir: [1, .4, .7], desc: '塔顶的青铜大钟，锈迹斑斑。传说钟声曾为薪王的归来而鸣——现在，它只为风而鸣。' });
-defPart('nest',     { name: '乌鸦巢', cat: 'tower', layer: 'tower', label: [8.5, 9.6, -2.1], viewDir: [.6, .35, 1], desc: '塔身外侧平台上的巨型鸟巢。把东西放进去，乌鸦会和你以物易物——它可是个精明的商人。' });
-defPart('graves',   { name: '墓碑群', cat: 'yard', layer: 'ground', label: [-8, 1.6, -3], viewDir: [-1, .5, -.5], desc: '悬崖边的墓碑群，东倒西歪。埋在这里的，大多是没能传火的余烬。' });
-defPart('deadtree', { name: '枯树', cat: 'yard', layer: 'ground', label: [-6, 3.4, 5], viewDir: [-1, .5, 1], desc: '扭曲的枯树指向灰暗的天空。在这个世界，连树木都放弃了生长。' });
-defPart('cliffpath',{ name: '悬崖石径', cat: 'yard', layer: 'ground', label: [4.5, 0.6, -6.5], viewDir: [.5, .5, -1], desc: '沿着悬崖延伸的石径，通往钟塔，也通往更深的黑暗。小心脚下——别像某些不死人一样掉下去。' });
+/* ---- 外部 ---- */
+defPart('dome',      { name: '穹顶', cat: 'out', layer: 'dome', label: [0, 18.6, 0], viewDir: [1, .65, 1], desc: '祭祀场标志性的石砌穹顶，顶部有破洞——乌鸦就住在上面。' });
+defPart('drum',      { name: '教堂外墙', cat: 'out', layer: 'hall', label: [10.2, 4.5, 2], viewDir: [1, .35, .4], desc: '环形大厅的石砌外墙，布满岁月的裂痕与苔斑。' });
+defPart('maindoor',  { name: '正门双扉', cat: 'out', layer: 'hall', label: [0, 3.4, 10.8], viewDir: [.3, .4, 1], desc: '南侧的拱形双扉木门，不死人由此踏入传火祭祀场。' });
+defPart('steps',     { name: '石阶入口', cat: 'out', layer: 'ground', label: [0, 1.2, 15], viewDir: [.4, .5, 1], desc: '从悬崖石径拾级而上，推开双扉便是薪王们的王座之间。' });
+defPart('archwin',   { name: '拱窗', cat: 'out', layer: 'hall', label: [-8.8, 5.6, 4.5], viewDir: [-1, .4, .5], desc: '高侧拱窗，灰暗的天光从这里漏进大厅。' });
+defPart('arches',    { name: '断裂石拱', cat: 'out', layer: 'ground', label: [-11, 4.5, 15], viewDir: [-1, .4, .8], desc: '祭祀场外散落的断裂石拱遗迹，不知是哪一朝的建筑。' });
+defPart('graves',    { name: '墓碑群', cat: 'out', layer: 'ground', label: [-4.5, 1.6, 21], viewDir: [-.4, .5, 1], desc: '悬崖小径两旁的无名墓碑，长眠着传火失败的人们。' });
+defPart('gianttree', { name: '巨人树', cat: 'out', layer: 'tower', label: [14, 7.5, 2], viewDir: [1, .45, .6], desc: '石化的巨人树。调查一下——"巨人树的种子尚未掉落"。' });
+defPart('deadtree',  { name: '枯树', cat: 'out', layer: 'ground', label: [-13, 5.5, 8], viewDir: [-1, .4, .6], desc: '枯死的树木，在风中一动不动。' });
+defPart('cliffpath', { name: '悬崖石径', cat: 'out', layer: 'ground', label: [4, 0.9, 25], viewDir: [.3, .6, 1], desc: '从墓园方向延伸而来的悬崖小径，击败薪王化身古达后你就是从这里走来的。' });
+defPart('swordmaster',{ name: '剑圣之地', cat: 'out', layer: 'ground', label: [-8.5, 1.6, 11], viewDir: [-.8, .5, .8], desc: '太刀剑圣在此游荡，小心被他砍下悬崖——杀了他能拿到打刀。' });
+/* ---- 主厅 ---- */
+defPart('bonfire',   { name: '中央篝火', cat: 'hall', layer: 'hall', xray: 1, label: [0, 2.2, 2], viewDir: [.7, .55, 1], desc: '插着螺旋剑的篝火，防火女在此为你升级。余烬在火光中升腾。' });
+defPart('firekeeper',{ name: '防火女', cat: 'hall', layer: 'hall', xray: 1, label: [2.8, 2.2, 3.6], viewDir: [1, .5, .8], desc: '看守火焰的防火女。"欢迎回来，灰烬大人。"' });
+defPart('hawkwood',  { name: '霍克伍德', cat: 'hall', layer: 'hall', xray: 1, label: [6.8, 1.6, -0.5], viewDir: [1, .5, .3], desc: '坐在东侧楼梯底的霍克伍德，会教你"崩溃"手势。' });
+defPart('dais',      { name: '王座高台', cat: 'hall', layer: 'hall', xray: 1, label: [0, 2.8, -5], viewDir: [.5, .6, 1], desc: '五王座所在的半圆形高台，边缘摆满长明蜡烛。' });
+defPart('throne-red',    { name: '红布王座', cat: 'hall', layer: 'hall', xray: 1, label: [-4.6, 3.4, -6.6], viewDir: [-.7, .5, .9], desc: '披着华丽红布、摆满圣烛的王座，属于某位出逃的薪王。' });
+defPart('throne-ludleth', { name: '鲁道斯的小王座', cat: 'hall', layer: 'hall', xray: 1, label: [-2.3, 2.8, -7.9], viewDir: [-.3, .5, 1], desc: '素面无饰的小王座——鲁道斯，唯一留守的薪王，此刻就坐在这里。' });
+defPart('throne-charred', { name: '焦黑中央王座', cat: 'hall', layer: 'hall', xray: 1, label: [0, 4.4, -8.2], viewDir: [0, .55, 1], desc: '中央最高、被烧得焦黑、布满熔流痕迹的王座。' });
+defPart('throne-swords',  { name: '剑冢王座', cat: 'hall', layer: 'hall', xray: 1, label: [2.3, 2.8, -7.9], viewDir: [.3, .5, 1], desc: '旁边插满长剑的王座，无言地诉说着主人的结局。' });
+defPart('throne-giant',   { name: '巨人王座', cat: 'hall', layer: 'hall', xray: 1, label: [4.6, 3.8, -6.6], viewDir: [.7, .5, .9], desc: '大到凡人无法安坐的巨型王座。' });
+defPart('candles',   { name: '王座烛台群', cat: 'hall', layer: 'hall', xray: 1, label: [3.2, 2, -3.6], viewDir: [.8, .6, .8], desc: '高台边缘的烛火，为缺席的王们长明。' });
+defPart('columns',   { name: '拱廊石柱', cat: 'hall', layer: 'hall', label: [-7.5, 4.5, -4], viewDir: [-1, .4, -.3], desc: '支撑穹顶的石柱与哥特拱廊。' });
+defPart('rafters',   { name: '穹顶木梁', cat: 'hall', layer: 'hall', xray: 1, label: [0, 11.5, 0], viewDir: [.6, .8, .6], desc: '穹顶下的木椽，其中一根藏着元素碎片。' });
+defPart('illusory',  { name: '幻影墙', cat: 'hall', layer: 'hall', xray: 1, label: [8.2, 5.5, -3.5], viewDir: [1, .5, -.3], desc: '敲一敲这面墙——后面藏着贪婪银蛇戒指的宝箱。' });
+defPart('crowsnest', { name: '乌鸦巢', cat: 'hall', layer: 'dome', label: [0, 17.7, 0], viewDir: [1, .7, .8], desc: '穹顶中央的鸟巢。"Pickle Pee, Pump-a-Rum"——可以和乌鸦以物易物。' });
+defPart('backstairs',{ name: '王座后阶梯', cat: 'hall', layer: 'hall', xray: 1, label: [0, 2.4, -10], viewDir: [0, .6, 1], desc: '王座后方的阶梯，通往上层平台。' });
+defPart('leonhard',  { name: '伦纳德角落', cat: 'hall', layer: 'hall', xray: 1, label: [3, 3, -9.6], viewDir: [.6, .5, .8], desc: '手指伦纳德在此等候，会赠你裂红眼宝珠。' });
+/* ---- 下层 ---- */
+defPart('tunnel',    { name: '地道', cat: 'under', layer: 'under', xray: 1, label: [0, -1.8, 3], viewDir: [.5, .6, 1], desc: '主入口下方的地道，通往后室。' });
+defPart('handmaid',  { name: '祭祀场侍女', cat: 'under', layer: 'under', xray: 1, label: [-4.5, -1.4, -6], viewDir: [-.8, .55, .8], desc: '收购遗灰、出售塔钥匙（20000魂）的老婆婆，就坐在铁匠隔壁。' });
+defPart('andre',     { name: '铁匠安德烈', cat: 'under', layer: 'under', xray: 1, label: [4.5, -1.2, -7], viewDir: [.8, .5, .8], desc: '传奇铁匠安德烈，在此为你强化武器。' });
+defPart('anvil',     { name: '铁砧', cat: 'under', layer: 'under', xray: 1, label: [3.3, -2, -5.8], viewDir: [.7, .6, .7], desc: '立在树桩上的铁砧，千锤百炼。' });
+defPart('forge',     { name: '锻炉', cat: 'under', layer: 'under', xray: 1, label: [5.6, -1.4, -8.2], viewDir: [1, .5, .6], desc: '终年不熄的锻炉，火光映着安德烈的背影。' });
+defPart('bellows',   { name: '风箱', cat: 'under', layer: 'under', xray: 1, label: [6.3, -2, -6.4], viewDir: [1, .6, .5], desc: '给锻炉鼓风的皮风箱。' });
+defPart('grindstone',{ name: '磨刀石', cat: 'under', layer: 'under', xray: 1, label: [2.8, -2.2, -8.2], viewDir: [.6, .6, .8], desc: '旋转的磨刀石，嚓嚓作响。' });
+defPart('weaponrack',{ name: '武器架', cat: 'under', layer: 'under', xray: 1, label: [6.4, -1.6, -8.2], viewDir: [1, .5, .4], desc: '靠墙的武器架，摆满待修的刀剑。' });
+/* ---- 塔楼 ---- */
+defPart('towergate', { name: '塔门', cat: 'tower', layer: 'tower', label: [17, 3.6, 0], viewDir: [1, .4, .5], desc: '上锁的塔门——需要20000魂的塔钥匙。' });
+defPart('tower',     { name: '钟塔', cat: 'tower', layer: 'tower', label: [20.5, 11, 0], viewDir: [1, .35, .6], desc: '祭祀场东侧的高塔，内有盘旋石梯直达塔顶。' });
+defPart('spairstairs',{ name: '盘旋石梯', cat: 'tower', layer: 'tower', xray: 1, label: [20, 7.5, 0], viewDir: [1, .5, .4], desc: '塔内的盘旋石梯，一圈圈通向高处。' });
+defPart('bell',      { name: '大钟', cat: 'tower', layer: 'tower', xray: 1, label: [20, 13.4, 0], viewDir: [1, .4, .5], desc: '塔顶机房的青铜大钟，钟舌早已锈住。' });
+defPart('bridge',    { name: '断裂石桥', cat: 'tower', layer: 'tower', label: [26.5, 13.6, 0], viewDir: [.8, .5, .8], desc: '连接两座塔的断裂石桥——从中段跳下，可以落到祭祀场屋顶。' });
+defPart('lifttower', { name: '升降机塔', cat: 'tower', layer: 'tower', label: [32.5, 11, 0], viewDir: [1, .35, .5], desc: '第二座塔，踩下机关，升降机带你上塔顶。' });
+defPart('lift',      { name: '升降机', cat: 'tower', layer: 'tower', xray: 1, label: [32, 8.5, 0], viewDir: [1, .5, .4], desc: '脚踏机关驱动的升降机，铁链绞盘还很结实。' });
+defPart('fksoul',    { name: '塔顶·防火女之魂', cat: 'tower', layer: 'tower', xray: 1, label: [32, 16.4, 0], viewDir: [1, .5, .6], desc: '塔顶尸体旁的防火女之魂——强化元素瓶就靠它。' });
 
-/* ============ 尺寸常量 ============ */
-const HF = 0.9;          // 主厅地面高度（教堂建在高台上）
-const WH = 4.2, T = 0.4; // 墙高 / 墙厚
-const HX = 5, HZ = 4;    // 主厅半宽 / 半深
-const EAVE = HF + WH;    // 屋檐 5.1
-const RIDGE = EAVE + 2.2;// 屋脊 7.3
-const TX = 8.5, TZ = -4; // 钟塔中心
-const TH = 11;           // 钟塔高度
+/* ============ 层组 ============ */
+const gDome = new THREE.Group(), gShrine = new THREE.Group(), gUnder = new THREE.Group(),
+      gTower = new THREE.Group(), gOutside = new THREE.Group();
+scene.add(gDome, gShrine, gUnder, gTower, gOutside);
+const cutWalls = {};
+const FX = { embers: [] };
 
-/* 层组（用于分层展开与视角切换） */
-const gGround = new THREE.Group(), gHall = new THREE.Group(),
-      gRoof = new THREE.Group(), gTower = new THREE.Group();
-scene.add(gGround, gHall, gRoof, gTower);
-const cutWalls = {};  // 剖面视角时隐藏的墙分组
+/* ============ 室外：悬崖、石径、墓碑、遗迹 ============ */
+(function buildOutside() {
+  const stoneM = M(0xffffff, { map: stoneTex, rough: 0.97 });
+  const stoneDark = M(0x3f4148, { rough: 1 });
+  const groundM = M(0xffffff, { map: groundTex, rough: 1 });
 
-/* 特效引用（火焰闪烁、余烬粒子） */
-const FX = { embers: [], fireLight: null, forgeLight: null, flameO: null, flameI: null };
-
-/* ============ 室外 ============ */
-(function buildOutdoor() {
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), M(0xffffff, { map: groundTex, rough: 1 }));
-  ground.rotation.x = -Math.PI / 2; ground.position.y = -0.02; ground.receiveShadow = true;
-  scene.add(ground);
-
-  const cp = P('cliffpath', gGround);
-  const plazaM = M(0xffffff, { map: stoneTex, rough: 1 });
-  box(20, 0.12, 16, plazaM, 1.5, 0.0, -1, cp);   // 石砌平台
-  // 悬崖边缘的乱石
-  const rockM = M(0x3a3b40, { rough: 1 });
-  for (let i = 0; i < 14; i++) {
-    const a = -0.5 + rnd() * 1.1;
-    const rr = 0.5 + rnd() * 1.1;
-    sph(rr, rockM, 12 + Math.cos(a) * 4 * rnd(), rr * 0.4, -9 + a * 8, cp, 1, 0.6 + rnd() * 0.4, 1);
+  // 悬崖山体（祭祀场建在山顶）
+  const cliff = cyl(30, 22, 9, groundM, 2, -5.2, 2, gOutside, 24);
+  cliff.receiveShadow = true;
+  // 散落乱石
+  for (let i = 0; i < 26; i++) {
+    const r = 0.3 + rnd() * 0.9;
+    const rock = mesh(new THREE.DodecahedronGeometry(r, 0), stoneDark,
+      -24 + rnd() * 52, -0.6 + rnd() * 0.5, -20 + rnd() * 48, gOutside);
+    rock.rotation.set(rnd() * 3, rnd() * 3, rnd() * 3);
   }
-  for (let i = 0; i < 8; i++) sph(0.4 + rnd() * 0.8, rockM, -9 + rnd() * 3, 0.2, -8.5 + rnd() * 2, cp, 1, 0.7, 1);
-  // 石径：入口 -> 钟塔
-  const slabM = M(0x55565e, { rough: 1 });
-  const pathPts = [[0, 7.8], [1.2, 5.2], [2.8, 2.8], [4.6, 0.2], [6.2, -1.4], [6.9, -2.6]];
-  pathPts.forEach(([x, z], i) => box(1.1, 0.1, 0.8, slabM, x, 0.1, z, cp, (rnd() - 0.5) * 0.5));
+  // 远山剪影
+  const mntM = M(0x2a2d36, { rough: 1 });
+  [[-55, -30, 26], [50, -45, 32], [-20, -70, 30], [60, 20, 24], [-60, 30, 28]].forEach(([x, z, h]) => {
+    const m = mesh(new THREE.ConeGeometry(16 + rnd() * 8, h, 7), mntM, x, h / 2 - 8, z, gOutside);
+    m.castShadow = false;
+  });
+
+  // 悬崖石径（南侧蜿蜒小径）
+  const path = P('cliffpath', gOutside);
+  for (let i = 0; i < 16; i++) {
+    const t = i / 15;
+    const x = Math.sin(t * 5) * 2.2 + t * 1.5;
+    const z = 13 + t * 17;
+    const slab = box(1.7 - t * 0.3, 0.14, 1.1, stoneM, x, 0.05 - t * 0.4, z, path, (rnd() - .5) * 0.4);
+    slab.receiveShadow = true;
+  }
+  // 入口石阶
+  const st = P('steps', gOutside);
+  for (let i = 0; i < 7; i++)
+    box(4.6 - i * 0.12, 0.28, 0.62, stoneM, 0, 0.14 + i * 0.26, 12.6 - i * 0.6, st);
 
   // 墓碑群
-  const gv = P('graves', gGround);
-  const graveM = M(0x4e4f55, { rough: 1 });
-  const spots = [[-8, -3], [-7.2, -3.8], [-8.8, -4.2], [-7.6, -2.2], [-9.3, -2.8], [-6.8, -4.6], [-9.6, -3.9], [-7.9, -5.1]];
-  spots.forEach(([x, z], i) => {
-    const h = 0.7 + rnd() * 0.5;
-    const st = box(0.5, h, 0.16, graveM, x, h / 2, z, gv, (rnd() - 0.5) * 0.9);
-    st.rotation.z = (rnd() - 0.5) * 0.22;
-    box(0.56, 0.12, 0.2, graveM, x, h + 0.02, z, gv, st.rotation.y).rotation.z = st.rotation.z;
-    if (i % 3 === 0) box(0.9, 0.14, 0.5, graveM, x + 0.3, 0.07, z + 0.4, gv, rnd()); // 倒塌的碑
+  const gv = P('graves', gOutside);
+  const graveSpots = [[-4.5, 19], [-2.8, 21.5], [-6, 23], [-3.4, 25], [4.2, 20], [5.6, 23.5], [3.2, 26], [-7.5, 17], [7.8, 18.5], [-5.5, 28], [1.5, 29], [6.5, 27], [-9, 24], [9, 25]];
+  graveSpots.forEach(([x, z], i) => {
+    const w = 0.55 + rnd() * 0.25, h = 0.9 + rnd() * 0.7;
+    const g2 = new THREE.Group(); g2.position.set(x, 0, z); g2.rotation.y = rnd() * 3; g2.rotation.z = (rnd() - .5) * 0.22; gv.add(g2);
+    box(w, h, 0.22, stoneM, 0, h / 2, 0, g2);
+    const cap = mesh(new THREE.CylinderGeometry(w / 2, w / 2, 0.22, 10, 1, false, 0, Math.PI), stoneM, 0, h, 0, g2);
+    cap.rotation.x = Math.PI / 2; cap.rotation.z = Math.PI / 2;
+    if (i % 3 === 0) { const rb = box(w * 1.5, 0.18, 0.5, stoneDark, 0, 0.09, 0.3, g2); rb.rotation.y = 0.3; }
   });
+
+  // 断裂石拱（两处室外遗迹）
+  const ar = P('arches', gOutside);
+  function ruinArch(x, z, ry, s) {
+    const g2 = new THREE.Group(); g2.position.set(x, 0, z); g2.rotation.y = ry; g2.scale.setScalar(s); ar.add(g2);
+    box(0.9, 4.2, 0.9, stoneM, -2.2, 2.1, 0, g2);
+    box(0.9, 3.1, 0.9, stoneM, 2.2, 1.55, 0, g2);       // 右柱断裂
+    const arc = mesh(new THREE.TorusGeometry(2.2, 0.45, 8, 12, Math.PI * 0.62), stoneM, 0, 4.2, 0, g2);
+    arc.rotation.z = Math.PI * 0.19;
+    const fallen = box(1.1, 0.8, 0.9, stoneDark, 3.4, 0.4, 0.8, g2); fallen.rotation.y = 0.7;
+  }
+  ruinArch(-11, 15, 0.5, 1.1);
+  ruinArch(12.5, 19, -0.9, 0.85);
 
   // 枯树
-  const dt = P('deadtree', gGround);
-  const barkM = M(0x2e2620, { rough: 1 });
+  const dt = P('deadtree', gOutside);
+  const barkM = M(0x4a4038, { rough: 1 });
   function deadTree(x, z, s) {
-    const g = new THREE.Group(); g.position.set(x, 0, z); dt.add(g);
-    cyl(0.13 * s, 0.24 * s, 2.4 * s, barkM, 0, 1.2 * s, 0, g);
-    for (let i = 0; i < 5; i++) {
-      const br = cyl(0.03 * s, 0.06 * s, (1.0 + rnd() * 0.7) * s, barkM, 0, 0, 0, g, 7);
-      const a = rnd() * Math.PI * 2, tilt = 0.5 + rnd() * 0.6;
-      br.position.set(Math.cos(a) * 0.35 * s, (1.9 + rnd() * 0.5) * s, Math.sin(a) * 0.35 * s);
-      br.rotation.set(Math.sin(a) * tilt, 0, Math.cos(a) * tilt);
-      const tw = cyl(0.015 * s, 0.03 * s, 0.7 * s, barkM, 0, 0, 0, g, 6);
-      tw.position.set(Math.cos(a) * 0.75 * s, (2.3 + rnd() * 0.4) * s, Math.sin(a) * 0.75 * s);
-      tw.rotation.set(Math.sin(a) * (tilt + 0.5), 0, Math.cos(a) * (tilt + 0.5));
+    const g2 = new THREE.Group(); g2.position.set(x, 0, z); g2.scale.setScalar(s); dt.add(g2);
+    cyl(0.22, 0.4, 3.6, barkM, 0, 1.8, 0, g2, 8);
+    for (let i = 0; i < 9; i++) {
+      const a = rnd() * Math.PI * 2, h0 = 1.6 + rnd() * 2.4, len = 1.2 + rnd() * 1.8;
+      const br = cyl(0.03, 0.07, len, barkM, Math.cos(a) * 0.5, h0, Math.sin(a) * 0.5, g2, 6);
+      br.rotation.z = Math.cos(a) * 1.1; br.rotation.x = -Math.sin(a) * 1.1;
+      br.position.y = h0 + len * 0.28;
     }
   }
-  deadTree(-6, 5, 1.1); deadTree(11.5, 2.5, 1.35); deadTree(-10.5, 1.5, 0.9);
+  deadTree(-13, 8, 1.3); deadTree(14.5, 21, 1.0); deadTree(-8.5, 25, 0.85);
+
+  // 剑圣之地（入口西侧）：插在地上的太刀
+  const sm = P('swordmaster', gOutside);
+  const kat = sword(-8.5, 0.55, 11, sm, 1.05, 0.12, 0.1);
+  kat.rotation.x = 0.35;
+  box(0.5, 0.35, 0.4, stoneDark, -8.5, 0.18, 11, sm);   // 跪垫石
+  candle(-7.9, 0, 10.4, sm, 1.2);
+
+  // 东-西 shield 之树（东侧）：枯树 + 尸体 + 圆盾
+  const sht = P('swordmaster', gOutside);
+  deadTree(10.5, 13, 0.9);
+  const corpse = box(0.5, 0.3, 1.1, M(0x3a3230, { rough: 1 }), 10.5, 0.15, 14.2, sht, 0.4);
+  const shield = cyl(0.32, 0.32, 0.06, M(0x6a5a34, { metal: 0.4, rough: 0.6 }), 10.9, 0.32, 14.2, sht, 14);
+  shield.rotation.x = Math.PI / 2 - 0.3;
+  // 两只游魂剪影
+  figure(12.2, 0, 15.5, sht, 0x2e2a26, 1.6, true);
+  figure(9.2, 0, 16.2, sht, 0x2e2a26, 1.55, true);
+  candle(11.4, 0, 13.4, sht, 1);
 })();
 
-/* ============ 主厅建筑 ============ */
+/* ============ 祭祀场主体：鼓墙、穹顶、入口 ============ */
+(function buildShrine() {
+  const stoneM = extM(0xffffff, { map: stoneTex, rough: 0.97 });
+  const stoneDark = M(0x3f4148, { rough: 1 });
+  const R = 9, WH = 7, T = 0.7;
+
+  // 环形鼓墙（双面）
+  const drumM = extM(0xffffff, { map: stoneTex, rough: 0.97, side: THREE.DoubleSide });
+  const drum = mesh(new THREE.CylinderGeometry(R, R + 0.4, WH, 36, 1, true), drumM, 0, WH / 2, 0, P('drum', gShrine), 36);
+  drum.castShadow = true;
+  // 墙顶雉堞（残缺）
+  for (let i = 0; i < 24; i++) {
+    if (rnd() < 0.3) continue;   // 残缺
+    const a = i / 24 * Math.PI * 2;
+    box(0.9, 0.55, 0.6, stoneM, Math.sin(a) * R, WH + 0.27, Math.cos(a) * R, P('drum', gShrine), a);
+  }
+  // 基座
+  cyl(R + 1.1, R + 1.6, 1.0, stoneM, 0, 0.1, 0, P('drum', gShrine), 36);
+
+  // 正门：南侧拱门 + 双扉木门（半开）+ 门楣雕饰
+  const md = P('maindoor', gShrine);
+  arch(3.4, 4.4, stoneM, 0, 0, R - 0.1, md, 0, false);
+  const doorM = M(0xffffff, { map: darkWoodTex, rough: 0.9 });
+  const d1 = box(0.78, 4.0, 0.14, doorM, -0.82, 2.0, R + 0.15, md); d1.rotation.y = 0.5;
+  const d2 = box(0.78, 4.0, 0.14, doorM, 0.82, 2.0, R + 0.15, md); d2.rotation.y = -0.12;
+  box(4.4, 0.5, 0.9, stoneM, 0, 5.6, R - 0.1, md);   // 门楣
+  sph(0.09, guardM, -0.35, 2.0, R + 0.28, md); sph(0.09, guardM, 0.35, 2.0, R + 0.28, md);
+
+  // 拱窗：6 扇高侧窗（石框 + 深色 recess）
+  const aw = P('archwin', gShrine);
+  for (let i = 0; i < 6; i++) {
+    const a = (i + 0.5) / 6 * Math.PI * 2;
+    if (Math.abs(a - Math.PI / 2) < 0.4) continue;  // 跳过正门方向
+    arch(1.5, 2.6, stoneM, Math.sin(a) * (R - 0.15), 3.4, Math.cos(a) * (R - 0.15), aw, a, true);
+  }
+
+  // 室内地面：石板 + 裂缝
+  const fl = cyl(R - 0.2, R - 0.2, 0.24, M(0xffffff, { map: stoneTex, rough: 1 }), 0, -0.02, 0, P('drum', gShrine), 36);
+  fl.receiveShadow = true;
+  // 地面碎石瓦砾
+  for (let i = 0; i < 40; i++) {
+    const a = rnd() * Math.PI * 2, r = 2 + rnd() * 6.5;
+    const rb = box(0.15 + rnd() * 0.35, 0.1 + rnd() * 0.15, 0.15 + rnd() * 0.3, stoneDark,
+      Math.sin(a) * r, 0.12, Math.cos(a) * r, P('drum', gShrine), rnd() * 3);
+    rb.receiveShadow = true;
+  }
+
+  // 穹顶：8 瓣中缺 2 瓣（破损），顶部留采光口
+  const dg = P('dome', gDome);
+  const domeM = extM(0xe2dccd, { map: domeTex, rough: 0.97, side: THREE.DoubleSide });
+  const DR = 9.7;
+  for (let i = 0; i < 8; i++) {
+    if (i === 2 || i === 5) continue;  // 破洞
+    const g2 = mesh(new THREE.SphereGeometry(DR, 7, 5, i / 8 * Math.PI * 2, Math.PI * 2 / 8, Math.PI * 0.14, Math.PI * 0.38), domeM, 0, 7, 0, dg);
+    g2.castShadow = true;
+  }
+  const oculus = mesh(new THREE.TorusGeometry(DR * Math.sin(Math.PI * 0.14), 0.35, 8, 20), stoneM, 0, 7 + DR * Math.cos(Math.PI * 0.14), 0, dg);
+  oculus.rotation.x = Math.PI / 2;
+  // 穹顶肋拱
+  for (let i = 0; i < 8; i++) {
+    const a = i / 8 * Math.PI * 2 + Math.PI / 8;
+    const rib = box(0.4, 0.4, 6.4, stoneDark, Math.sin(a) * 7.6, 11.6, Math.cos(a) * 7.6, dg, a);
+    rib.rotation.x = -0.62;
+  }
+  // 掉落的穹顶碎块（室内）
+  for (let i = 0; i < 6; i++) {
+    const fb = box(0.8 + rnd() * 1.2, 0.4, 0.7 + rnd() * 0.8, stoneDark, -4 + rnd() * 8, 0.25, -3 + rnd() * 6, P('drum', gShrine), rnd() * 3);
+    fb.receiveShadow = true;
+  }
+
+  // 穹顶木梁（3 根横跨 + 吊杆）
+  const rf = P('rafters', gShrine);
+  const beamM = M(0xffffff, { map: darkWoodTex, rough: 0.95 });
+  [[0, 9.6, 0], [2.8, 10.4, 0.35], [-2.8, 10.4, -0.35]].forEach(([x, y, rz]) => {
+    const b = box(15.5, 0.42, 0.42, beamM, x, y, 0, rf);
+    b.rotation.z = rz * 0.3;
+  });
+  const b2 = box(0.42, 0.42, 15.5, beamM, 0, 10.1, 0, rf);
+  cyl(0.09, 0.09, 2.2, beamM, 1.2, 8.4, 0, rf, 8);   // 吊杆
+  // 元素碎片（发光小瓶）
+  const shard = mesh(new THREE.OctahedronGeometry(0.16), M(0x7fe0ff, { emissive: 0x3fa8e0, ei: 1.6 }), 1.2, 7.1, 0, rf);
+  shard.castShadow = false;
+
+  // 环形回廊（二层）：环形走道 + 牛腿托 + 栏杆
+  const gal = P('columns', gShrine);
+  const ringShape = new THREE.Shape();
+  ringShape.absarc(0, 0, 8.2, 0, Math.PI * 2, false);
+  const ringHole = new THREE.Path();
+  ringHole.absarc(0, 0, 6.9, 0, Math.PI * 2, true);
+  ringShape.holes.push(ringHole);
+  const ringGeo = new THREE.ExtrudeGeometry(ringShape, { depth: 0.3, bevelEnabled: false, curveSegments: 40 });
+  ringGeo.rotateX(-Math.PI / 2);
+  mesh(ringGeo, stoneM, 0, 4.55, 0, gal);
+  for (let i = 0; i < 12; i++) {
+    const a = i / 12 * Math.PI * 2;
+    const cor = box(0.35, 0.7, 0.5, stoneDark, Math.sin(a) * 7.55, 4.2, Math.cos(a) * 7.55, gal, a);
+    cor.rotation.x = 0.25;
+  }
+  for (let i = 0; i < 16; i++) {
+    const a = i / 16 * Math.PI * 2;
+    box(0.09, 0.9, 0.09, stoneDark, Math.sin(a) * 8.0, 5.3, Math.cos(a) * 8.0, gal);
+  }
+  const rail = mesh(new THREE.TorusGeometry(8.0, 0.06, 6, 40), stoneDark, 0, 5.75, 0, gal);
+  rail.rotation.x = Math.PI / 2;
+  // 拱廊石柱（一层，8 根）
+  for (let i = 0; i < 8; i++) {
+    const a = i / 8 * Math.PI * 2 + Math.PI / 8;
+    const x = Math.sin(a) * 7.4, z = Math.cos(a) * 7.4;
+    cyl(0.42, 0.5, 6.4, stoneM, x, 3.2, z, gal, 10);
+    box(1.2, 0.35, 1.2, stoneM, x, 6.55, z, gal);
+    box(1.3, 0.35, 1.3, stoneM, x, 0.18, z, gal);
+  }
+  // 幻影墙（东侧一段颜色微异的墙）
+  const il = P('illusory', gShrine);
+  const iw = mesh(new THREE.CylinderGeometry(8.85, 8.85, 6.4, 8, 1, true, Math.PI * 0.08, Math.PI * 0.1),
+    M(0x55585f, { rough: 0.9, side: THREE.DoubleSide }), 0, 3.4, 0, il);
+  iw.castShadow = false;
+  gDome.scale.y = 0.9;   // 穹顶略压扁，更接近实景轮廓
+})();
+
+/* ============ 主厅：篝火、王座、NPC ============ */
 (function buildHall() {
-  const stoneM = extM(0xffffff, { map: stoneTex, rough: 1 });
-  const stoneDark = M(0x8f9096, { map: stoneTex, rough: 1 });
-  const woodM = M(0xffffff, { map: darkWoodTex, rough: 0.9 });
-
-  // 高台地基 + 地面
-  box(2 * HX + 0.8, HF, 2 * HZ + 0.8, stoneDark, 0, HF / 2, 0, gHall);
-  box(2 * HX - 0.4, 0.06, 2 * HZ - 0.4, stoneM, 0, HF + 0.0, 0, gHall);
-
-  // 外墙（南/东分组用于主厅剖面）
-  const ch = P('church', gHall);
-  const hs = new THREE.Group(), hn = new THREE.Group(), hw = new THREE.Group(), he = new THREE.Group();
-  ch.add(hs, hn, hw, he);
-  const y0 = HF;
-  wallSeg(-HX, HZ, -1.1, HZ, y0, WH, T, stoneM, hs);   // 南墙左
-  wallSeg(1.1, HZ, HX, HZ, y0, WH, T, stoneM, hs);     // 南墙右
-  box(2.2, WH - 2.6, T, stoneM, 0, y0 + 2.6 + (WH - 2.6) / 2, HZ, hs); // 门楣上
-  wallSeg(-HX, -HZ, HX, -HZ, y0, WH, T, stoneM, hn);   // 北墙
-  wallSeg(-HX, -HZ, -HX, HZ, y0, WH, T, stoneM, hw);   // 西墙
-  wallSeg(HX, -HZ, HX, HZ, y0, WH, T, stoneM, he);     // 东墙
-  cutWalls.hs = hs; cutWalls.he = he;
-  // 木门（随南墙隐藏）
-  box(0.55, 2.6, 0.12, woodM, -0.29, y0 + 1.3, HZ, hs);
-  box(0.55, 2.6, 0.12, woodM, 0.29, y0 + 1.3, HZ, hs);
-  const arch = mesh(new THREE.TorusGeometry(1.15, 0.15, 8, 14, Math.PI), stoneDark, 0, y0 + 2.6, HZ + 0.1, hs);
-  arch.castShadow = false;
-  // 拱窗
-  function archedWin(x, z, ry, parent) {
-    const g = new THREE.Group(); g.position.set(x, y0 + 2.3, z); g.rotation.y = ry; parent.add(g);
-    box(1.0, 1.7, 0.14, stoneDark, 0, 0, 0, g);
-    const rec = box(0.72, 1.42, 0.06, M(0x0c0e13, { rough: 1 }), 0, 0, 0.05, g);
-    rec.castShadow = false;
-    const arc = mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.06, 12, 1, false, 0, Math.PI), M(0x0c0e13, { rough: 1 }), 0, 0.71, 0.05, g);
-    arc.rotation.x = Math.PI / 2; arc.castShadow = false;
-    box(1.14, 0.14, 0.3, stoneDark, 0, -0.92, 0.06, g); // 窗台
-  }
-  archedWin(-2.6, HZ + 0.16, 0, hs); archedWin(2.6, HZ + 0.16, 0, hs);
-  archedWin(HX + 0.16, -1.5, Math.PI / 2, he); archedWin(HX + 0.16, 1.5, Math.PI / 2, he);
-  archedWin(-HX - 0.16, -1.5, -Math.PI / 2, hw); archedWin(-HX - 0.16, 1.5, -Math.PI / 2, hw);
-  archedWin(-2.5, -HZ - 0.16, Math.PI, hn); archedWin(2.5, -HZ - 0.16, Math.PI, hn);
-  // 残破的墙顶
-  for (let i = 0; i < 9; i++) {
-    const bx = -HX + 0.6 + i * 1.1;
-    box(0.55, 0.25 + rnd() * 0.55, T + 0.06, stoneDark, bx, y0 + WH + 0.1, HZ, hs);
-    box(0.55, 0.2 + rnd() * 0.5, T + 0.06, stoneDark, bx, y0 + WH + 0.08, -HZ, hn);
-  }
-  for (let i = 0; i < 7; i++) {
-    const bz = -HZ + 0.7 + i * 1.05;
-    box(T + 0.06, 0.2 + rnd() * 0.5, 0.55, stoneDark, -HX, y0 + WH + 0.08, bz, hw);
-    box(T + 0.06, 0.25 + rnd() * 0.55, 0.55, stoneDark, HX, y0 + WH + 0.1, bz, he);
-  }
-
-  // 石柱：两根完整，两根折断
-  const colM = M(0x9a9ba1, { map: stoneTex, rough: 1 });
-  cyl(0.32, 0.4, WH, colM, -2.6, y0 + WH / 2, -1.2, ch);
-  cyl(0.32, 0.4, WH, colM, 2.6, y0 + WH / 2, -1.2, ch);
-  box(1.0, 0.25, 1.0, colM, -2.6, y0 + WH - 0.1, -1.2, ch);
-  box(1.0, 0.25, 1.0, colM, 2.6, y0 + WH - 0.1, -1.2, ch);
-  cyl(0.32, 0.4, 1.3, colM, -2.6, y0 + 0.65, 1.8, ch);
-  cyl(0.32, 0.4, 1.0, colM, 2.6, y0 + 0.5, 1.8, ch);
-  const fallen = cyl(0.3, 0.3, 2.6, colM, 1.4, y0 + 0.32, 2.6, ch, 12);
-  fallen.rotation.z = Math.PI / 2; fallen.rotation.y = 0.4;
-  // 碎石
-  for (let i = 0; i < 7; i++)
-    box(0.3 + rnd() * 0.5, 0.2 + rnd() * 0.3, 0.3 + rnd() * 0.4, stoneDark,
-      -4 + rnd() * 8, y0 + 0.12, -3 + rnd() * 6, ch, rnd() * 3);
-
-  // 石阶入口
-  const st = P('steps', gHall);
-  for (let i = 0; i < 6; i++)
-    box(3.4, 0.17, 0.62, stoneDark, 0, 0.82 - i * 0.138, 4.7 + i * 0.55, st);
-  box(0.5, 1.1, 0.5, stoneDark, -2.0, 0.5, 5.4, st);   // 阶旁石墩
-  box(0.5, 1.1, 0.5, stoneDark, 2.0, 0.5, 5.4, st);
-  sph(0.32, stoneDark, -2.0, 1.2, 5.4, st);
-  sph(0.32, stoneDark, 2.0, 1.2, 5.4, st);
-})();
-
-/* ============ 主厅内部 ============ */
-(function buildHallInterior() {
-  const y0 = HF;
-  const stoneDark = M(0x6a6b72, { map: stoneTex, rough: 1 });
-  const throneM = M(0x5a5b62, { map: stoneTex, rough: 1 });
-  const woodM = M(0xffffff, { map: darkWoodTex, rough: 0.9 });
-  const ironM = M(0x3a3f46, { metal: 0.8, rough: 0.45 });
-
-  // ---- 王座高台 ----
-  const th = P('thrones', gHall);
-  const dais = cyl(2.0, 2.1, 0.55, stoneDark, 0, y0 + 0.275, -2.2, th, 24);
-  // 半圆高台：用 theta 裁掉前半（重建为半圆柱）
-  th.remove(dais);
-  const halfDais = mesh(new THREE.CylinderGeometry(2.0, 2.1, 0.55, 24, 1, false, Math.PI / 2, Math.PI), stoneDark, 0, y0 + 0.275, -2.2, th);
-  function bigThrone(x, z) {
-    const g = new THREE.Group(); g.position.set(x, y0 + 0.55, z); th.add(g);
-    box(1.15, 0.5, 0.95, throneM, 0, 0.25, 0, g);
-    box(0.95, 0.22, 0.75, throneM, 0, 0.6, 0.05, g);
-    box(1.1, 1.9, 0.28, throneM, 0, 1.45, -0.36, g);
-    const pyr = mesh(new THREE.ConeGeometry(0.5, 0.5, 4), throneM, 0, 2.65, -0.36, g);
-    pyr.rotation.y = Math.PI / 4;
-    box(0.18, 0.55, 0.72, throneM, -0.62, 0.75, 0.02, g);
-    box(0.18, 0.55, 0.72, throneM, 0.62, 0.75, 0.02, g);
-  }
-  bigThrone(-1.5, -3.35); bigThrone(-0.5, -3.45); bigThrone(0.5, -3.45); bigThrone(1.5, -3.35);
-
-  // ---- 鲁道斯的小王座 ----
-  const lu = P('ludleth', gHall);
-  (function smallThrone() {
-    const g = new THREE.Group(); g.position.set(2.55, y0, -2.55); g.rotation.y = -0.35; lu.add(g);
-    box(0.7, 0.35, 0.6, throneM, 0, 0.18, 0, g);
-    box(0.6, 0.16, 0.5, throneM, 0, 0.42, 0.03, g);
-    box(0.68, 1.15, 0.2, throneM, 0, 0.95, -0.22, g);
-    const pyr = mesh(new THREE.ConeGeometry(0.32, 0.32, 4), throneM, 0, 1.68, -0.22, g);
-    pyr.rotation.y = Math.PI / 4;
-  })();
+  const stoneM = M(0xffffff, { map: stoneTex, rough: 0.97 });
+  const stoneDark = M(0x3f4148, { rough: 1 });
 
   // ---- 中央篝火 ----
-  const bf = P('bonfire', gHall);
-  for (let i = 0; i < 9; i++) {
-    const a = i / 9 * Math.PI * 2;
-    box(0.28, 0.2, 0.24, stoneDark, Math.cos(a) * 0.78, y0 + 0.1, 0.8 + Math.sin(a) * 0.78, bf, a);
+  const bf = P('bonfire', gShrine);
+  for (let i = 0; i < 11; i++) {   // 石环
+    const a = i / 11 * Math.PI * 2;
+    const st = box(0.34, 0.3, 0.26, stoneDark, Math.sin(a) * 0.95, 0.15, 2 + Math.cos(a) * 0.95, bf, a + 0.3);
+    st.rotation.z = (rnd() - .5) * 0.2;
   }
-  sph(0.58, M(0x77716a, { rough: 1 }), 0, y0 + 0.06, 0.8, bf, 1, 0.32, 1);
-  // 螺旋剑
-  const sword = new THREE.Group(); sword.position.set(0, y0 + 0.1, 0.8); sword.rotation.z = -0.24; bf.add(sword);
-  box(0.1, 1.15, 0.025, ironM, 0, 0.62, 0, sword);
-  box(0.52, 0.07, 0.09, M(0x6a5a3a, { metal: 0.6, rough: 0.5 }), 0, 1.2, 0, sword);
-  cyl(0.035, 0.035, 0.3, woodM, 0, 1.38, 0, sword);
-  sph(0.055, ironM, 0, 1.55, 0, sword);
-  // 火焰
-  const flameO = mesh(new THREE.ConeGeometry(0.38, 1.05, 12), M(0xff7a1e, { emissive: 0xff5a00, ei: 2.2, transparent: true, opacity: 0.88 }), 0, y0 + 0.85, 0.8, bf);
-  const flameI = mesh(new THREE.ConeGeometry(0.2, 0.68, 10), M(0xffd97a, { emissive: 0xffc93c, ei: 2.6, transparent: true, opacity: 0.95 }), 0, y0 + 0.8, 0.8, bf);
-  flameO.castShadow = flameI.castShadow = false;
-  FX.flameO = flameO; FX.flameI = flameI;
-  FX.fireLight = new THREE.PointLight(0xff8c2e, 2.6, 26, 2);
-  FX.fireLight.position.set(0, y0 + 1.8, 0.8);
-  scene.add(FX.fireLight);
-  // 余烬粒子
-  const emberM = M(0xff9a3c, { emissive: 0xff7a1e, ei: 2.5 });
-  for (let i = 0; i < 22; i++) {
-    const e = sph(0.02 + rnd() * 0.03, emberM, (rnd() - 0.5) * 1.2, y0 + 0.6 + rnd() * 2, 0.8 + (rnd() - 0.5) * 1.2, bf);
+  sph(0.75, M(0x4a4a4e, { rough: 1 }), 0, 0.12, 2, bf, 1, 0.35, 1);   // 灰堆
+  for (let i = 0; i < 8; i++) sph(0.09 + rnd() * 0.08, M(0x2c2c30, { rough: 1 }), (rnd() - .5) * 1.1, 0.2, 2 + (rnd() - .5) * 1.1, bf); // 余烬块
+  // 螺旋剑（倾斜插入）
+  const csw = new THREE.Group(); csw.position.set(0, 0.15, 2); csw.rotation.z = 0.22; csw.rotation.x = -0.1; bf.add(csw);
+  box(0.09, 1.5, 0.03, steelM, 0, 0.75, 0, csw);
+  const coil = mesh(new THREE.TorusGeometry(0.09, 0.028, 6, 12), steelM, 0, 1.52, 0, csw);
+  box(0.3, 0.06, 0.06, guardM, 0, 0.12, 0, csw);
+  cyl(0.035, 0.035, 0.22, M(0x2c2118, { rough: 0.9 }), 0, -0.02, 0, csw, 8);
+  // 火焰：三层锥 + 光 + 余烬粒子
+  const flameO = mesh(new THREE.ConeGeometry(0.42, 1.15, 10), M(0xff7a1e, { emissive: 0xff6a0e, ei: 2.4, transparent: true, opacity: 0.92 }), 0, 0.85, 2, bf);
+  flameO.castShadow = false;
+  const flameI = mesh(new THREE.ConeGeometry(0.22, 0.7, 8), M(0xffd97a, { emissive: 0xffc23e, ei: 3 }), 0, 0.7, 2, bf);
+  flameI.castShadow = false;
+  FX.flameO = flameO;
+  FX.fireLight = new THREE.PointLight(0xff8c2e, 60, 26, 2);
+  FX.fireLight.position.set(0, 1.6, 2); bf.add(FX.fireLight);
+  // 主厅内部暖光（烛火氛围）
+  FX.daisLight = new THREE.PointLight(0xffb36b, 45, 28, 2);
+  FX.daisLight.position.set(0, 6.5, -5); gShrine.add(FX.daisLight);
+  const hallFill = new THREE.PointLight(0xffd9a0, 16, 32, 2);
+  hallFill.position.set(0, 8, 7); gShrine.add(hallFill);
+  for (let i = 0; i < 24; i++) {
+    const e = sph(0.03 + rnd() * 0.035, flameM, (rnd() - .5) * 0.8, 0.8, 2 + (rnd() - .5) * 0.8, bf);
     e.castShadow = false;
-    FX.embers.push({ m: e, ph: rnd() * 6.28, sp: 0.5 + rnd() * 0.8, x0: e.position.x, z0: e.position.z });
+    FX.embers.push({ m: e, x0: e.position.x, z0: e.position.z, sp: 0.5 + rnd() * 0.8, ph: rnd() * 2.2 });
   }
 
-  // ---- 铁匠安德烈 ----
-  const an = P('andre', gHall);
-  cyl(0.32, 0.4, 0.55, woodM, 3.6, y0 + 0.28, -1.2, an);
-  box(0.78, 0.26, 0.32, ironM, 3.6, y0 + 0.68, -1.2, an);
-  const horn = cyl(0.02, 0.11, 0.42, ironM, 4.05, y0 + 0.68, -1.2, an, 10);
-  horn.rotation.z = Math.PI / 2;
-  // 锻炉
-  box(0.3, 1.3, 1.15, stoneDark, 4.45, y0 + 0.65, -2.7, an);
-  box(1.5, 0.32, 1.15, stoneDark, 3.85, y0 + 1.42, -2.7, an);
-  box(1.5, 1.3, 0.28, stoneDark, 3.85, y0 + 0.65, -3.28, an);
-  const forgeGlow = box(0.08, 0.7, 0.72, M(0xff8c2e, { emissive: 0xff6a00, ei: 2.4 }), 3.72, y0 + 0.55, -2.7, an);
-  forgeGlow.castShadow = false;
-  FX.forgeLight = new THREE.PointLight(0xff7a1e, 1.5, 8, 2);
-  FX.forgeLight.position.set(3.5, y0 + 0.9, -2.7);
-  scene.add(FX.forgeLight);
-  // 磨刀石
-  box(0.12, 0.6, 0.5, woodM, 2.75, y0 + 0.3, -0.5, an);
-  box(0.12, 0.6, 0.5, woodM, 3.25, y0 + 0.3, -0.5, an);
-  const wheel = cyl(0.5, 0.5, 0.14, M(0x8a8b90, { rough: 0.9 }), 3.0, y0 + 0.62, -0.5, an, 18);
-  wheel.rotation.z = Math.PI / 2;
+  // ---- 防火女 ----
+  const fk = P('firekeeper', gShrine);
+  figure(2.8, 0, 3.6, fk, 0x3d3a44, 1.75, false);
+  const veil = sph(0.19, M(0x2c2a33, { rough: 1, transparent: true, opacity: 0.85 }), 2.8, 1.44, 3.6, fk);
+  veil.castShadow = false;
+  candle(2.1, 0, 4.3, fk, 1.3); candle(3.5, 0, 4.3, fk, 1.1);
 
-  // ---- 祭祀场侍女 ----
-  const hm = P('handmaid', gHall);
-  box(0.6, 0.09, 0.55, woodM, -3.8, y0 + 0.55, 0.5, hm);
-  box(0.6, 0.75, 0.09, woodM, -3.8, y0 + 0.95, 0.22, hm);
-  for (const sx of [-0.24, 0.24]) for (const sz of [-0.2, 0.2])
-    box(0.08, 0.55, 0.08, woodM, -3.8 + sx, y0 + 0.28, 0.5 + sz, hm);
-  cyl(0.38, 0.38, 0.07, woodM, -2.9, y0 + 0.62, 0.9, hm, 16);
-  cyl(0.06, 0.08, 0.6, woodM, -2.9, y0 + 0.3, 0.9, hm);
-  cyl(0.03, 0.05, 1.3, ironM, -3.1, y0 + 0.65, 1.5, hm);
-  box(0.4, 0.05, 0.05, ironM, -3.1, y0 + 1.28, 1.5, hm);
-  for (const cx of [-3.24, -3.1, -2.96]) {
-    cyl(0.035, 0.035, 0.2, M(0xe8e0cc, { rough: 0.8 }), cx, y0 + 1.38, 1.5, hm, 8);
-    const fl = sph(0.028, M(0xffc93c, { emissive: 0xff9a00, ei: 2.5 }), cx, y0 + 1.52, 1.5, hm, 1, 1.4, 1);
-    fl.castShadow = false;
+  // ---- 霍克伍德（东侧楼梯底） ----
+  const hw = P('hawkwood', gShrine);
+  figure(6.6, 0, -0.6, hw, 0x4a4438, 1.7, true);
+  sword(6.1, 0.05, -0.2, hw, 1.0, 1.35, 0);   // 搁在一旁的剑
+
+  // ---- 王座高台（两层半圆） ----
+  const da = P('dais', gShrine);
+  const tier1 = mesh(new THREE.CylinderGeometry(5.6, 5.8, 0.65, 24, 1, false, Math.PI / 2, Math.PI), stoneM, 0, 0.32, -5, da);
+  tier1.receiveShadow = true;
+  const tier2 = mesh(new THREE.CylinderGeometry(4.2, 4.4, 0.65, 24, 1, false, Math.PI / 2, Math.PI), stoneM, 0, 0.95, -5, da);
+  tier2.receiveShadow = true;
+  // 高台正面拱形壁龛（南侧立面）
+  for (let i = -1; i <= 1; i++) arch(1.3, 1.5, stoneDark, i * 2.6, 0.65, -4.82, da, 0, false);
+  // 高台边缘烛火
+  const cd = P('candles', gShrine);
+  for (let i = 0; i <= 10; i++) {
+    const a = Math.PI / 2 + (i / 10) * Math.PI;
+    candle(Math.sin(a) * 5.45, 0.65, -5 + Math.cos(a) * 5.45, cd, 1.15);
+  }
+  for (let i = 0; i <= 8; i++) {
+    const a = Math.PI / 2 + (i / 8) * Math.PI;
+    candle(Math.sin(a) * 4.05, 1.28, -5 + Math.cos(a) * 4.05, cd, 0.95);
   }
 
-  // ---- 火盆 ----
-  const bz = P('brazier', gHall);
-  [[-3, -3], [3, 2.6]].forEach(([x, z]) => {
-    cyl(0.06, 0.1, 0.95, ironM, x, y0 + 0.48, z, bz);
-    cyl(0.38, 0.22, 0.3, ironM, x, y0 + 1.05, z, bz, 12);
-    sph(0.2, M(0x903a10, { emissive: 0xcc4400, ei: 1.6 }), x, y0 + 1.14, z, bz, 1, 0.4, 1).castShadow = false;
-    const f = mesh(new THREE.ConeGeometry(0.15, 0.5, 8), M(0xff8c2e, { emissive: 0xff6a00, ei: 2.2, transparent: true, opacity: 0.9 }), x, y0 + 1.4, z, bz);
-    f.castShadow = false;
+  // ---- 五王座 ----
+  const throneStone = M(0xffffff, { map: stoneTex, rough: 0.95 });
+  const charM = M(0x1c1a18, { rough: 0.9, emissive: 0xff4400, ei: 0.12 });
+  const throneDefs = [
+    { id: 'throne-red',     a: -54, style: 'red' },
+    { id: 'throne-ludleth', a: -27, style: 'ludleth' },
+    { id: 'throne-charred', a: 0,   style: 'charred' },
+    { id: 'throne-swords',  a: 27,  style: 'swords' },
+    { id: 'throne-giant',   a: 54,  style: 'giant' },
+  ];
+  throneDefs.forEach(({ id, a, style }) => {
+    const g = P(id, gShrine);
+    const ar = a * Math.PI / 180;
+    const R2 = 3.1, cx = 0, cz = -5;
+    g.position.set(cx + Math.sin(ar) * R2, 1.28, cz - Math.cos(ar) * R2);
+    g.rotation.y = -ar;
+    const s = style === 'giant' ? 1.55 : style === 'ludleth' ? 0.72 : 1;
+    const bm = style === 'charred' ? charM : throneStone;
+    // 基座/座面/扶手/靠背（按风格缩放与材质）
+    box(1.15 * s, 0.5 * s, 1.0 * s, bm, 0, 0.25 * s, 0, g);
+    box(0.95 * s, 0.55 * s, 0.85 * s, bm, 0, 0.72 * s, 0.05 * s, g);
+    box(0.18 * s, 0.8 * s, 0.9 * s, bm, -0.56 * s, 0.85 * s, 0, g);
+    box(0.18 * s, 0.8 * s, 0.9 * s, bm, 0.56 * s, 0.85 * s, 0, g);
+    const backH = style === 'charred' ? 3.0 : 2.3;
+    box(1.0 * s, backH * s, 0.28 * s, bm, 0, (0.9 + backH / 2) * s, -0.42 * s, g);
+    const crest = mesh(new THREE.ConeGeometry(0.5 * s, 0.6 * s, 4), bm, 0, (0.9 + backH + 0.3) * s, -0.42 * s, g);
+    crest.rotation.y = Math.PI / 4;
+    const insc = box(0.7 * s, 0.9 * s, 0.06, M(0xffffff, { map: runeTex, rough: 0.9 }), 0, 1.8 * s, -0.56 * s, g);
+    insc.castShadow = false;
+    if (style === 'red') {   // 华丽红布 + 圣烛
+      const cloth = box(1.25 * s, 1.9 * s, 0.1, M(0x8e1f1f, { rough: 0.85 }), 0, 1.6 * s, -0.2 * s, g);
+      cloth.rotation.x = 0.12;
+      box(1.3 * s, 0.12, 1.0 * s, M(0x8e1f1f, { rough: 0.85 }), 0, 1.02 * s, 0.05 * s, g);
+      for (let i = 0; i < 5; i++) candle(-0.8 + i * 0.4, 1.28, 1.1, g, 1.2);
+    }
+    if (style === 'ludleth') {  // 鲁道斯端坐
+      figure(0, 1.0 * s, 0.1, g, 0x5a4a3a, 0.9, true);
+      sph(0.11, M(0xc9a882, { rough: 1 }), 0, 1.62 * s, 0.14, g);  // 头（小）
+    }
+    if (style === 'charred') {  // 熔流裂纹
+      for (let i = 0; i < 5; i++) {
+        const cr = box(0.05, 1.6 * s * (0.5 + rnd() * 0.5), 0.02, M(0xff5a1e, { emissive: 0xff4400, ei: 1.4 }), (rnd() - .5) * 0.7 * s, 1.9 * s, -0.27 * s, g);
+        cr.castShadow = false; cr.rotation.z = (rnd() - .5) * 0.5;
+      }
+    }
+    if (style === 'swords') {   // 插剑
+      for (let i = 0; i < 6; i++)
+        sword(-1.1 + i * 0.42, 1.28, 0.75 + (rnd() - .5) * 0.3, g, 0.9 + rnd() * 0.4, (rnd() - .5) * 0.5, (rnd() - .5) * 0.3);
+    }
   });
 
-  // ---- 残破的旗帜 ----
-  const banM = M(0x5e1420, { rough: 1, side: THREE.DoubleSide });
-  const b1 = mesh(new THREE.PlaneGeometry(1.3, 2.4), banM, -3, y0 + 2.7, -3.78, th);
-  const b2 = mesh(new THREE.PlaneGeometry(1.3, 2.4), banM, 3, y0 + 2.7, -3.78, th);
-  b1.castShadow = b2.castShadow = false;
+  // ---- 王座后阶梯 + 上层平台 + 伦纳德 ----
+  const bs = P('backstairs', gShrine);
+  for (let i = 0; i < 6; i++) box(3.6, 0.3, 0.55, stoneM, 0, 0.15 + i * 0.28, -9.6 - i * 0.52, bs);
+  box(5.5, 0.3, 2.6, stoneM, 0, 1.75, -12.2, bs);
+  for (let i = -1; i <= 1; i++) arch(1.4, 2.2, stoneM, i * 1.9, 1.9, -13.2, bs, 0, true);
+  const ln = P('leonhard', gShrine);
+  figure(2.6, 1.9, -12.2, ln, 0x2c2c34, 1.75, true);
+  const mask = sph(0.13, M(0xd8d4c8, { rough: 0.7 }), 2.6, 2.62, -12.05, ln);  // 银面具
+  mask.castShadow = false;
+  candle(1.8, 1.9, -12.6, ln, 1.1);
+
+  // ---- 东侧下行楼梯（通下层） ----
+  const es = P('hawkwood', gShrine);
+  for (let i = 0; i < 12; i++)
+    box(1.4, 0.26, 0.5, stoneM, 7.6, -0.13 - i * 0.24, 1.8 - i * 0.48, es);
 })();
 
-/* ============ 破损屋顶 ============ */
-(function buildRoof() {
-  const r = P('roof', gRoof);
-  const slateM = M(0x3f4249, { rough: 1 });
-  const beamM = M(0xffffff, { map: darkWoodTex, rough: 0.95 });
-  const slopeLen = Math.hypot(HZ + 0.9, RIDGE - EAVE);
-  const ang = Math.atan2(RIDGE - EAVE, HZ + 0.9);
-  // 北坡完整
-  const n = box(2 * HX + 1.8, 0.16, slopeLen, slateM, 0, (EAVE + RIDGE) / 2, -(HZ / 2 + 0.45), r);
-  n.rotation.x = -ang;
-  // 南坡坍塌：只剩左右两块
-  const s1 = box(5.1, 0.16, slopeLen, slateM, -3.35, (EAVE + RIDGE) / 2, (HZ / 2 + 0.45), r);
-  s1.rotation.x = ang;
-  const s2 = box(3.7, 0.16, slopeLen, slateM, 4.05, (EAVE + RIDGE) / 2 - 0.15, (HZ / 2 + 0.45), r);
-  s2.rotation.x = ang + 0.12;
-  // 屋脊梁
-  box(2 * HX + 1.9, 0.2, 0.32, beamM, 0, RIDGE + 0.02, 0, r);
-  // 裸露的椽木（坍塌处）
-  for (let i = 0; i < 5; i++) {
-    const rf = box(0.15, 0.15, 5.8, beamM, -0.4 + i * 0.62, (EAVE + RIDGE) / 2 - 0.1, 1.1, r);
-    rf.rotation.x = ang * 0.92;
+/* ============ 下层：地道、侍女、铁匠铺 ============ */
+(function buildUnder() {
+  const stoneM = M(0xffffff, { map: stoneTex, rough: 0.97 });
+  const stoneDark = M(0x3f4148, { rough: 1 });
+  const FY = -3;   // 下层地面
+
+  // 下层大厅：x[-7,7], z[-9,-2]
+  const tun = P('tunnel', gUnder);
+  box(14, 0.3, 7, stoneM, 0, FY - 0.05, -5.5, tun);                    // 地面
+  box(14, 0.35, 7.4, stoneDark, 0, -0.32, -5.5, tun);                 // 顶（主厅地板下）
+  wallSeg(-7, -9, 7, -9, FY, 3, 0.6, stoneM, tun);                    // 北墙
+  wallSeg(-7, -2, -7, -9, FY, 3, 0.6, stoneM, tun);                   // 西墙
+  wallSeg(7, -2, 7, -9, FY, 3, 0.6, stoneM, tun);                     // 东墙
+  wallSeg(-7, -2, -1.6, -2, FY, 3, 0.6, stoneM, tun);                 // 南墙（留地道口）
+  wallSeg(1.6, -2, 7, -2, FY, 3, 0.6, stoneM, tun);
+  // 地道：向南至主入口下方，尽头碎石封堵
+  box(3.2, 0.3, 7, stoneM, 0, FY - 0.05, 1.5, tun);
+  wallSeg(-1.6, -2, -1.6, 5, FY, 2.6, 0.5, stoneM, tun);
+  wallSeg(1.6, -2, 1.6, 5, FY, 2.6, 0.5, stoneM, tun);
+  box(3.2, 2.6, 0.5, stoneM, 0, FY + 1.3, 5, tun);
+  for (let i = 0; i < 7; i++)
+    box(0.4 + rnd() * 0.5, 0.35 + rnd() * 0.4, 0.4, stoneDark, -1 + rnd() * 2, FY + 0.2, 4.2 + rnd() * 0.6, tun, rnd() * 3);
+  candle(-1.1, FY, 0.5, tun, 1.1); candle(1.1, FY, 2.5, tun, 0.9);
+  // 石柱
+  for (const [x, z] of [[-4, -4], [4, -4], [-4, -7.5], [4, -7.5]]) {
+    cyl(0.32, 0.38, 2.9, stoneM, x, FY + 1.45, z, tun, 10);
+    box(0.9, 0.25, 0.9, stoneM, x, FY + 2.95, z, tun);
   }
-  // 掉落在主厅的屋顶碎块
-  const ch1 = box(1.4, 0.14, 1.1, slateM, 0.6, HF + 0.2, 1.6, r); ch1.rotation.set(0.2, 0.5, 0.12);
-  const ch2 = box(1.0, 0.14, 0.9, slateM, -0.9, HF + 0.14, 2.2, r); ch2.rotation.set(-0.15, 1.1, 0.2);
+
+  // ---- 祭祀场侍女（西侧） ----
+  const hm = P('handmaid', gUnder);
+  const rug = cyl(1.1, 1.1, 0.06, M(0x6e2a2a, { rough: 1 }), -4.5, FY + 0.03, -6, hm, 16);
+  rug.receiveShadow = true;
+  figure(-4.5, FY, -6, hm, 0x4a3d33, 1.6, true);
+  sph(0.15, M(0xb09a80, { rough: 1 }), -4.5, FY + 0.66, -5.95, hm);
+  // 货物：陶罐与箱子
+  sph(0.28, M(0x7a5230, { rough: 0.9 }), -5.6, FY + 0.28, -5.4, hm);
+  cyl(0.12, 0.2, 0.5, M(0x7a5230, { rough: 0.9 }), -5.6, FY + 0.6, -5.4, hm, 10);
+  sph(0.24, M(0x6a4a28, { rough: 0.9 }), -3.6, FY + 0.24, -6.8, hm);
+  box(0.55, 0.4, 0.45, M(0x5a4028, { map: darkWoodTex }), -5.3, FY + 0.2, -6.9, hm, 0.3);
+  box(0.45, 0.35, 0.4, M(0x5a4028, { map: darkWoodTex }), -3.5, FY + 0.17, -5.2, hm, -0.2);
+  // 烛台
+  cyl(0.04, 0.06, 1.1, M(0x3a3a3a, { metal: 0.5, rough: 0.5 }), -3.7, FY + 0.55, -6.6, hm, 8);
+  for (let i = 0; i < 3; i++) candle(-3.7 + (i - 1) * 0.12, FY + 1.08, -6.6, hm, 0.9);
+
+  // ---- 铁匠安德烈（东侧锻炉壁龛） ----
+  const an = P('andre', gUnder);
+  figure(4.5, FY, -6.6, an, 0x4f4438, 1.85, false);   // 安德烈（光头大汉剪影）
+  sph(0.17, M(0xc9a882, { rough: 1 }), 4.5, FY + 1.52, -6.6, an);
+  box(0.5, 0.28, 0.3, M(0x3a3230, { rough: 1 }), 4.5, FY + 1.1, -6.45, an);  // 皮围裙
+  // 锻炉壁龛
+  arch(3.2, 2.8, stoneM, 5.2, FY, -8.6, an, 0, false);
+  const fg = P('forge', gUnder);
+  box(1.7, 1.25, 1.1, stoneDark, 5.2, FY + 0.62, -8.5, fg);
+  const firebox = box(1.1, 0.7, 0.2, M(0xff7a1e, { emissive: 0xff5a0e, ei: 2.6 }), 5.2, FY + 0.55, -7.92, fg);
+  firebox.castShadow = false;
+  box(1.9, 0.18, 1.3, stoneM, 5.2, FY + 1.32, -8.5, fg);   // 炉顶
+  cyl(0.22, 0.28, 1.6, stoneM, 5.2, FY + 2.2, -8.5, fg, 10); // 烟囱
+  FX.forgeLight = new THREE.PointLight(0xff7a1e, 30, 10, 2);
+  FX.forgeLight.position.set(5.2, FY + 1.0, -7.6); fg.add(FX.forgeLight);
+  // 铁砧（树桩上）
+  const av = P('anvil', gUnder);
+  cyl(0.42, 0.5, 0.62, M(0xffffff, { map: darkWoodTex, rough: 1 }), 3.3, FY + 0.31, -5.8, av, 12);
+  box(0.85, 0.28, 0.32, M(0x3c3f45, { metal: 0.7, rough: 0.45 }), 3.3, FY + 0.76, -5.8, av);
+  const horn = mesh(new THREE.ConeGeometry(0.14, 0.5, 10), M(0x3c3f45, { metal: 0.7, rough: 0.45 }), 3.85, FY + 0.76, -5.8, av);
+  horn.rotation.z = -Math.PI / 2;
+  box(0.3, 0.14, 0.34, M(0x3c3f45, { metal: 0.7, rough: 0.45 }), 3.3, FY + 0.62, -5.8, av);
+  // 风箱
+  const bl = P('bellows', gUnder);
+  const b1 = box(1.0, 0.14, 0.55, M(0xffffff, { map: darkWoodTex }), 6.4, FY + 0.5, -6.4, bl); b1.rotation.z = 0.12;
+  const b2 = box(1.0, 0.14, 0.55, M(0xffffff, { map: darkWoodTex }), 6.4, FY + 0.72, -6.4, bl); b2.rotation.z = -0.1;
+  box(0.5, 0.3, 0.4, M(0x8a2a1a, { rough: 0.9 }), 6.4, FY + 0.61, -6.4, bl);  // 皮囊
+  cyl(0.05, 0.09, 0.7, M(0x2c2c2c, { metal: 0.6, rough: 0.5 }), 5.75, FY + 0.6, -6.9, bl, 8).rotation.x = 1.1;
+  // 磨刀石
+  const gs = P('grindstone', gUnder);
+  box(0.9, 0.7, 0.5, M(0xffffff, { map: darkWoodTex }), 2.6, FY + 0.35, -8.1, gs);
+  const wheel = mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.16, 18), stoneDark, 2.6, FY + 0.95, -8.1, gs);
+  wheel.rotation.z = Math.PI / 2;
+  cyl(0.04, 0.04, 0.5, M(0x3a3a3a, { metal: 0.5, rough: 0.5 }), 2.6, FY + 0.95, -8.1, gs, 8).rotation.x = Math.PI / 2;
+  // 武器架
+  const wr = P('weaponrack', gUnder);
+  box(0.09, 1.5, 0.09, M(0xffffff, { map: darkWoodTex }), 6.5, FY + 0.75, -8.3, wr);
+  box(0.09, 1.5, 0.09, M(0xffffff, { map: darkWoodTex }), 7.3, FY + 0.75, -8.3, wr);
+  box(0.95, 0.09, 0.09, M(0xffffff, { map: darkWoodTex }), 6.9, FY + 1.35, -8.3, wr);
+  box(0.95, 0.09, 0.09, M(0xffffff, { map: darkWoodTex }), 6.9, FY + 0.5, -8.3, wr);
+  sword(6.6, FY + 0.55, -8.28, wr, 1.15, 0.06, 0);
+  sword(6.9, FY + 0.55, -8.28, wr, 1.05, -0.05, 0);
+  sword(7.15, FY + 0.55, -8.28, wr, 1.2, 0.1, 0);
+  // 水桶与杂物
+  cyl(0.22, 0.18, 0.4, M(0xffffff, { map: darkWoodTex }), 2.2, FY + 0.2, -6.2, an, 10);
 })();
 
-/* ============ 钟塔 ============ */
+/* ============ 塔楼群：巨人树、钟塔、断桥、升降机 ============ */
 (function buildTower() {
-  const stoneM = extM(0xffffff, { map: stoneTex, rough: 1 });
-  const stoneDark = M(0x8f9096, { map: stoneTex, rough: 1 });
-  const woodM = M(0xffffff, { map: darkWoodTex, rough: 0.9 });
-  const X0 = TX - 1.7, X1 = TX + 1.7, Z0 = TZ - 1.7, Z1 = TZ + 1.7;
-  const t = P('tower', gTower);
-  const ts = new THREE.Group(), tn = new THREE.Group(), tw = new THREE.Group(), te = new THREE.Group();
-  t.add(ts, tn, tw, te);
-  const BELF = 8.5; // 钟楼层起始高度
-  // 四面墙（到钟楼层）
-  wallSeg(X0, Z1, X1, Z1, 0, BELF, 0.35, stoneM, ts);   // 南
-  wallSeg(X0, Z0, X1, Z0, 0, BELF, 0.35, stoneM, tn);   // 北
-  wallSeg(X0, Z0, X0, -4.7, 0, BELF, 0.35, stoneM, tw); // 西（门洞两侧）
-  wallSeg(X0, -3.3, X0, Z1, 0, BELF, 0.35, stoneM, tw);
-  box(0.35, BELF - 2.6, 1.4, stoneM, X0, 2.6 + (BELF - 2.6) / 2, -4, tw); // 门楣上
-  wallSeg(X1, Z0, X1, Z1, 0, BELF, 0.35, stoneM, te);   // 东
-  cutWalls.ts = ts;
-  // 四角墩柱（钟楼层以上）
-  for (const [px, pz] of [[X0, Z0], [X0, Z1], [X1, Z0], [X1, Z1]])
-    box(0.5, TH - BELF, 0.5, stoneDark, px, BELF + (TH - BELF) / 2, pz, t);
-  // 钟楼层横梁
-  box(3.4, 0.3, 0.3, stoneDark, TX, BELF + 0.1, Z1, t);
-  box(3.4, 0.3, 0.3, stoneDark, TX, BELF + 0.1, Z0, t);
-  // 塔顶（可隐藏）
-  const tr = new THREE.Group(); t.add(tr);
-  const pyr = mesh(new THREE.ConeGeometry(2.75, 2.1, 4), M(0x35373d, { rough: 1 }), TX, TH + 1.05, TZ, tr);
-  pyr.rotation.y = Math.PI / 4;
-  box(0.5, 0.5, 0.5, stoneDark, TX, TH + 2.2, TZ, tr);
-  cutWalls.tr = tr;
+  const stoneM = extM(0xffffff, { map: stoneTex, rough: 0.97 });
+  const stoneDark = M(0x3f4148, { rough: 1 });
+  const TY = 0.8;   // 塔楼平台高度
 
-  // 盘旋木梯
-  cyl(0.18, 0.24, BELF, woodM, TX, BELF / 2, TZ, t, 10);
-  for (let i = 0; i < 15; i++) {
-    const a = i * 0.55, y = 0.7 + i * 0.5;
-    box(0.95, 0.1, 0.42, woodM, TX + Math.cos(a) * 0.8, y, TZ + Math.sin(a) * 0.8, t, -a + Math.PI / 2);
+  // 塔楼平台 + 石阶
+  box(22, 0.9, 13, stoneM, 21, TY - 0.45, 0, P('tower', gTower));
+  for (let i = 0; i < 4; i++) box(3.2, 0.24, 1.0, stoneM, 11 + i * 0.75, 0.12 + i * 0.22, 3, P('tower', gTower));
+
+  // ---- 石化巨人树 ----
+  const gt = P('gianttree', gTower);
+  const petM = M(0x9a938a, { rough: 1 });
+  let px = 14, pz = 2;
+  for (let i = 0; i < 3; i++) {
+    cyl(0.55 - i * 0.12, 0.7 - i * 0.12, 2.0, petM, px, TY + 1.0 + i * 1.9, pz, gt, 9);
+    px += (rnd() - .5) * 0.5; pz += (rnd() - .5) * 0.5;
+  }
+  for (let i = 0; i < 10; i++) {
+    const a = rnd() * Math.PI * 2, len = 1.6 + rnd() * 2.2;
+    const br = cyl(0.04, 0.1, len, petM, px + Math.cos(a) * 0.6, TY + 5.6 + rnd() * 1.2, pz + Math.sin(a) * 0.6, gt, 6);
+    br.rotation.z = Math.cos(a) * 1.2; br.rotation.x = -Math.sin(a) * 1.2;
+  }
+  // 树根
+  for (let i = 0; i < 6; i++) {
+    const a = i / 6 * Math.PI * 2;
+    const rt = cyl(0.09, 0.16, 1.4, petM, 14 + Math.cos(a) * 0.8, TY + 0.4, 2 + Math.sin(a) * 0.8, gt, 6);
+    rt.rotation.z = Math.cos(a) * 0.7; rt.rotation.x = -Math.sin(a) * 0.7;
   }
 
-  // 大钟
-  const b = P('bell', gTower);
-  const bronzeM = M(0x8a6a3a, { metal: 0.85, rough: 0.45 });
-  box(1.3, 0.2, 0.28, woodM, TX, 10.35, TZ, b);
-  cyl(0.3, 0.58, 0.95, bronzeM, TX, 9.75, TZ, b, 16);
-  const rim = mesh(new THREE.TorusGeometry(0.55, 0.09, 8, 16), bronzeM, TX, 9.3, TZ, b);
-  rim.rotation.x = Math.PI / 2;
-  sph(0.13, ironDark(), TX, 9.15, TZ, b);
-  function ironDark() { return M(0x2c2f34, { metal: 0.7, rough: 0.5 }); }
+  // ---- 塔门（上锁） ----
+  const tg = P('towergate', gTower);
+  arch(2.6, 3.6, stoneM, 17, TY, 0, tg, Math.PI / 2, false);
+  for (let i = 0; i < 7; i++)   // 闸门铁栅（半放下）
+    cyl(0.045, 0.045, 2.2, M(0x2c2c30, { metal: 0.6, rough: 0.5 }), 17, TY + 1.6, -0.75 + i * 0.25, tg, 6);
+  box(1.7, 0.3, 0.12, M(0x2c2c30, { metal: 0.6, rough: 0.5 }), 17, TY + 0.6, 0, tg);
+  box(0.3, 0.4, 0.08, M(0xd9b23a, { metal: 0.7, rough: 0.4 }), 17.06, TY + 1.9, 0.62, tg);  // 锁
 
-  // 乌鸦巢（南侧平台）
-  const ns = P('nest', gTower);
-  box(1.9, 0.24, 1.5, stoneDark, TX, BELF + 0.05, Z1 + 0.65, ns);
-  const nestM = M(0x4a3520, { rough: 1 });
-  const ring = mesh(new THREE.TorusGeometry(0.55, 0.2, 8, 14), nestM, TX, BELF + 0.42, Z1 + 0.65, ns);
-  ring.rotation.x = Math.PI / 2;
-  for (let i = 0; i < 7; i++) {
-    const stk = cyl(0.03, 0.03, 0.9, nestM, TX, BELF + 0.45, Z1 + 0.65, ns, 6);
-    stk.rotation.set(rnd() * 1.2 - 0.6, rnd() * 3, Math.PI / 2 + (rnd() - 0.5) * 0.8);
+  // ---- 一号钟塔（方形，盘旋石梯） ----
+  const tw = P('tower', gTower);
+  const TX = 20, TW = 4.6, TH = 13;
+  box(TW, TH, 0.6, stoneM, TX, TY + TH / 2, TW / 2 - 0.3, tw);            // 北墙
+  cutWalls.ts = box(TW, TH, 0.6, stoneM, TX, TY + TH / 2, -TW / 2 + 0.3, tw);   // 南墙（塔楼视角隐藏）
+  box(0.6, TH, TW, stoneM, TX - TW / 2 + 0.3, TY + TH / 2, 0, tw);        // 西墙
+  box(0.6, TH, TW, stoneM, TX + TW / 2 - 0.3, TY + TH / 2, 0, tw);        // 东墙
+  // 箭孔窗
+  for (const yy of [4, 7.5, 11]) for (const [wx, wz, ry] of [[TX, TW / 2 + 0.02, 0], [TX - TW / 2 - 0.02, 0, Math.PI / 2]]) {
+    const slit = box(0.28, 1.1, 0.1, M(0x0b0c10, { rough: 1 }), wx, TY + yy, wz, tw, ry);
+    slit.castShadow = false;
   }
-  const shiny = sph(0.1, M(0x9fc4ff, { emissive: 0x4a7acc, ei: 1.2 }), TX + 0.15, BELF + 0.5, Z1 + 0.6, ns, 1, 0.7, 1);
-  shiny.castShadow = false;
+  // 顶部残缺雉堞
+  for (let i = 0; i < 10; i++) {
+    if (rnd() < 0.35) continue;
+    const a = i / 10 * Math.PI * 2;
+    box(0.55, 0.5, 0.4, stoneM, TX + Math.sin(a) * (TW / 2), TY + TH + 0.25, Math.cos(a) * (TW / 2), tw, a);
+  }
+  // 盘旋石梯（中央石柱 + 20 级）
+  const sp = P('spairstairs', gTower);
+  cyl(0.35, 0.42, TH - 1, stoneM, TX, TY + (TH - 1) / 2, 0, sp, 10);
+  for (let i = 0; i < 20; i++) {
+    const a = i / 20 * Math.PI * 3;
+    const sx = TX + Math.sin(a) * 1.35, sz = Math.cos(a) * 1.35;
+    box(1.15, 0.2, 0.62, stoneM, sx, TY + 1.2 + i * 0.56, sz, sp, a);
+  }
+  // 大钟（塔顶机房）
+  const bl = P('bell', gTower);
+  box(2.6, 0.3, 0.3, M(0xffffff, { map: darkWoodTex }), TX, TY + TH - 0.6, 0, bl);
+  const bellM = M(0x8a6a2a, { metal: 0.75, rough: 0.45 });
+  mesh(new THREE.CylinderGeometry(0.42, 0.78, 1.25, 14), bellM, TX, TY + TH - 1.5, 0, bl);
+  sph(0.14, M(0x3a3a3a, { metal: 0.6, rough: 0.5 }), TX, TY + TH - 2.25, 0, bl);  // 钟舌
+  cyl(0.05, 0.05, 0.5, M(0x3a3a3a, { metal: 0.6, rough: 0.5 }), TX, TY + TH - 0.95, 0, bl, 8);
+
+  // ---- 断裂石桥 ----
+  const br = P('bridge', gTower);
+  const BY = TY + 11.2;
+  box(3.2, 0.5, 1.7, stoneM, 23.9, BY, 0, br);
+  box(2.4, 0.5, 1.7, stoneM, 28.6, BY, 0, br);
+  for (const bx of [22.6, 25.2, 27.8, 29.6]) {  // 桥栏（残缺）
+    if (rnd() < 0.3) continue;
+    box(0.25, 0.8, 0.25, stoneM, bx, BY + 0.6, 0.75, br);
+    box(0.25, 0.8, 0.25, stoneM, bx, BY + 0.6, -0.75, br);
+  }
+  const fallen = box(1.8, 0.5, 1.6, stoneDark, 26.6, BY - 3.4, 0.4, br, 0.4);  // 坠落的桥段
+  fallen.rotation.z = 0.25;
+  box(1.4, 0.3, 1.2, stoneM, 26.6, BY - 3.05, 0.4, br, 0.4);  // 下方小平台
+
+  // ---- 二号升降机塔（圆形） ----
+  const lt = P('lifttower', gTower);
+  const LX = 32, LR = 2.7, LH = 15;
+  const ltDrum = mesh(new THREE.CylinderGeometry(LR, LR + 0.3, LH, 18, 1, true), stoneM, LX, TY + LH / 2, 0, lt);
+  // 内壁可见：加内层
+  const ltIn = mesh(new THREE.CylinderGeometry(LR - 0.5, LR - 0.5, LH, 18, 1, true),
+    M(0xffffff, { map: stoneTex, rough: 0.97, side: THREE.BackSide }), LX, TY + LH / 2, 0, lt);
+  // 升降机
+  const lf = P('lift', gTower);
+  box(2.0, 0.28, 2.0, M(0xffffff, { map: darkWoodTex }), LX, TY + 5.5, 0, lf);
+  for (const [cx, cz] of [[-0.85, -0.85], [0.85, -0.85], [-0.85, 0.85], [0.85, 0.85]])
+    cyl(0.035, 0.035, 9.5, M(0x2c2c2c, { metal: 0.65, rough: 0.45 }), LX + cx, TY + 10.4, cz, lf, 6);
+  cyl(0.5, 0.6, 0.5, stoneDark, LX, TY + 15.4, 0, lf, 10);   // 绞盘
+  const plate = cyl(0.55, 0.55, 0.1, stoneDark, LX - 1.2, TY + 0.65, 1.2, lf, 12);  // 脚踏机关
+  // 塔顶平台 + 雉堞
+  cyl(LR + 0.4, LR + 0.4, 0.4, stoneM, LX, TY + LH + 0.1, 0, lt, 18);
+  for (let i = 0; i < 12; i++) {
+    if (rnd() < 0.3) continue;
+    const a = i / 12 * Math.PI * 2;
+    box(0.5, 0.55, 0.35, stoneM, LX + Math.sin(a) * (LR + 0.3), TY + LH + 0.55, Math.cos(a) * (LR + 0.3), lt, a);
+  }
+  // 塔顶：防火女之魂（尸体 + 发光物）
+  const fk2 = P('fksoul', gTower);
+  box(0.55, 0.32, 1.2, M(0x3a3230, { rough: 1 }), LX + 0.6, TY + LH + 0.45, 0.5, fk2, 0.5);
+  sph(0.16, M(0xb09a80, { rough: 1 }), LX + 0.6, TY + LH + 0.66, 0.95, fk2);
+  const soul = mesh(new THREE.OctahedronGeometry(0.17), M(0xbfe8ff, { emissive: 0x6fb8e8, ei: 2 }), LX - 0.5, TY + LH + 0.55, -0.6, fk2);
+  soul.castShadow = false;
+  candle(LX + 1.3, TY + LH + 0.3, -0.9, fk2, 1);
+
+  // ---- 乌鸦巢（穹顶顶部中央） ----
+  const cn = P('crowsnest', gDome);
+  const nestM = M(0x4a3626, { rough: 1 });
+  const nest = mesh(new THREE.TorusGeometry(0.95, 0.3, 8, 16), nestM, 0, 16.0, 0, cn);
+  nest.rotation.x = Math.PI / 2;
+  for (let i = 0; i < 16; i++) {
+    const a = rnd() * Math.PI * 2;
+    const stick = cyl(0.03, 0.045, 0.9 + rnd() * 0.7, nestM, Math.cos(a) * 0.95, 16.0 + (rnd() - .5) * 0.3, Math.sin(a) * 0.95, cn, 5);
+    stick.rotation.z = Math.cos(a) * 1.25; stick.rotation.x = -Math.sin(a) * 1.25;
+  }
+  for (let i = 0; i < 3; i++) {   // 亮闪闪的交易物
+    const tr = mesh(new THREE.OctahedronGeometry(0.11), M(0xffe9a8, { emissive: 0xffd76a, ei: 1.8 }), (rnd() - .5) * 1.1, 16.2, (rnd() - .5) * 1.1, cn);
+    tr.castShadow = false;
+  }
 })();
 
 /* ============ 交互 ============ */
@@ -540,7 +907,7 @@ controls.addEventListener('start', () => { fly = null; });
 
 // 部件列表
 const partsWrap = document.getElementById('parts');
-for (const ck of ['out', 'hall', 'tower', 'yard']) {
+for (const ck of ['out', 'hall', 'under', 'tower']) {
   const h = document.createElement('div'); h.className = 'cat'; h.textContent = CATS[ck];
   partsWrap.appendChild(h);
   for (const id in PARTS) {
@@ -558,18 +925,14 @@ function setMode(m) {
   cur = m;
   document.querySelectorAll('.vbtn').forEach(b => b.classList.toggle('on', b.dataset.view === m));
   const xray = (m === 'xray');
-  gRoof.visible = (m === 'exterior' || m === 'tower') && !xray;
-  // 主厅视角：隐藏南+东墙，做娃娃屋剖面
-  const cutH = (m === 'hall');
-  cutWalls.hs.visible = !cutH; cutWalls.he.visible = !cutH;
-  // 钟塔视角：隐藏塔身南侧+塔顶，看内部楼梯与大钟
-  const cutT = (m === 'tower');
-  cutWalls.ts.visible = !cutT; cutWalls.tr.visible = !cutT;
+  gDome.visible = (m === 'exterior' || m === 'tower') && !xray;
+  const cutT = (m === 'tower');                       // 钟塔视角：隐藏塔身南墙看内部
+  if (cutWalls.ts) cutWalls.ts.visible = !cutT;
   extMats.forEach(mt => { mt.transparent = xray; mt.opacity = xray ? 0.14 : 1; mt.depthWrite = !xray; mt.needsUpdate = true; });
-  if (m === 'exterior') flyTo(V(14, 9, 17), V(2, 2.5, -1));
-  if (m === 'hall') flyTo(V(8.5, 7.5, 12.5), V(0, 1.8, -1));
-  if (m === 'tower') flyTo(V(15, 8.5, 3.5), V(8.5, 5, -4));
-  if (m === 'xray') flyTo(V(14, 10, 16), V(2, 3, -1));
+  if (m === 'exterior') flyTo(V(17, 11, 21), V(2, 3, -2));
+  if (m === 'hall') flyTo(V(0, 15, 22), V(0, 2.5, -3));
+  if (m === 'tower') flyTo(V(40, 14, 15), V(25, 7, 0));
+  if (m === 'xray') flyTo(V(17, 12, 20), V(4, 3, -2));
 }
 document.querySelectorAll('.vbtn').forEach(b => b.onclick = () => setMode(b.dataset.view));
 
@@ -580,8 +943,9 @@ const tRotate = document.getElementById('tRotate');
 tRotate.onclick = () => { controls.autoRotate = !controls.autoRotate; tRotate.classList.toggle('on', controls.autoRotate); };
 document.getElementById('explode').addEventListener('input', e => {
   const t = e.target.value / 100;
-  gRoof.position.y = 5 * t;
-  gTower.position.x = 4.5 * t;
+  gDome.position.y = 8 * t;
+  gTower.position.y = 4 * t;
+  gUnder.position.y = -2.5 * t;
 });
 document.getElementById('menuBtn').onclick = () => { panel.classList.toggle('hide'); setTimeout(onResize, 260); };
 document.getElementById('infoX').onclick = () => infoEl.classList.remove('show');
@@ -589,18 +953,18 @@ document.getElementById('infoX').onclick = () => infoEl.classList.remove('show')
 // 选择部件
 function ensureVisible(p) {
   const L = p.layer;
-  if (L === 'roof') { if (cur !== 'exterior') setMode('exterior'); return; }
+  if (L === 'dome') { if (cur !== 'exterior' && cur !== 'tower') setMode('exterior'); return; }
   if (L === 'ground') return;
   if (p.xray) {
     if (cur === 'exterior') setMode('xray');
-    else if (cur === 'hall' && L === 'tower') setMode('xray');
-    else if (cur === 'tower' && L === 'hall') setMode('xray');
+    else if (cur === 'hall' && (L === 'tower' || L === 'under')) setMode('xray');
+    else if (cur === 'tower' && (L === 'hall' || L === 'under')) setMode('xray');
   }
 }
 function clearHl() {
   if (hlBox) { scene.remove(hlBox); hlBox.geometry.dispose(); hlBox.material.dispose(); hlBox = null; }
 }
-const LAYER_SUB = { roof: ' · 屋顶', hall: ' · 主厅', tower: ' · 钟塔', ground: ' · 室外' };
+const LAYER_SUB = { dome: ' · 穹顶', hall: ' · 主厅', under: ' · 下层', tower: ' · 塔楼', ground: ' · 室外' };
 function selectPart(id) {
   const p = PARTS[id];
   if (!p || !p.group) return;
@@ -670,7 +1034,9 @@ const pv = new THREE.Vector3();
 function refreshLabels() {
   for (const { id, el, v } of labelEls) {
     const p = PARTS[id];
-    const showXray = cur === 'xray' || (cur === 'hall' && p.layer === 'hall') || (cur === 'tower' && p.layer === 'tower');
+    const showXray = cur === 'xray'
+      || (cur === 'hall' && (p.layer === 'hall' || p.layer === 'dome'))
+      || (cur === 'tower' && p.layer === 'tower');
     if (!labelsOn || !isShown(p.group) || (p.xray && !showXray)) { el.style.display = 'none'; continue; }
     pv.copy(v).applyMatrix4(p.group.matrixWorld).project(camera);
     if (pv.z > 1 || pv.z < -1) { el.style.display = 'none'; continue; }
@@ -680,18 +1046,18 @@ function refreshLabels() {
   }
 }
 
-// 自适应
+// 自适应（手机端修复：统一用带样式更新的 setSize + 零值保护）
 function onResize() {
   viewW = view.clientWidth; viewH = view.clientHeight;
   if (viewW < 2 || viewH < 2) return;
   renderer.setSize(viewW, viewH);
   camera.aspect = viewW / viewH;
-  camera.fov = viewW < viewH ? 62 : 48; // 竖屏拉开视野，房子能完整入镜
+  camera.fov = viewW < viewH ? 62 : 48;
   camera.updateProjectionMatrix();
 }
 window.addEventListener('resize', onResize);
 
-// 主循环：相机动画 + 篝火闪烁 + 余烬上升
+// 主循环：相机动画 + 篝火/锻炉闪烁 + 余烬上升
 const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
@@ -702,14 +1068,15 @@ function animate() {
     if (camera.position.distanceTo(fly.pos) < 0.06) fly = null;
   }
   controls.update();
-  if (FX.fireLight) FX.fireLight.intensity = 2.6 + Math.sin(t * 11) * 0.4 + Math.sin(t * 23 + 1.7) * 0.25;
-  if (FX.forgeLight) FX.forgeLight.intensity = 1.5 + Math.sin(t * 9 + 0.5) * 0.3;
+  if (FX.fireLight) FX.fireLight.intensity = 60 + Math.sin(t * 11) * 9 + Math.sin(t * 23 + 1.7) * 6;
+  if (FX.daisLight) FX.daisLight.intensity = 45 + Math.sin(t * 7 + 1) * 5;
+  if (FX.forgeLight) FX.forgeLight.intensity = 30 + Math.sin(t * 9 + 0.5) * 6;
   if (FX.flameO) { const s = 1 + Math.sin(t * 13) * 0.07; FX.flameO.scale.set(s, 1 + Math.sin(t * 17) * 0.1, s); }
   for (const e of FX.embers) {
     const prog = (t * e.sp + e.ph) % 2.2;
-    e.m.position.y = HF + 0.7 + prog * 1.1;
-    e.m.position.x = e.x0 + Math.sin(t * 2 + e.ph) * 0.15;
-    e.m.position.z = e.z0 + Math.cos(t * 1.7 + e.ph) * 0.15;
+    e.m.position.y = 0.85 + prog * 1.5;
+    e.m.position.x = e.x0 + Math.sin(t * 2 + e.ph) * 0.16;
+    e.m.position.z = e.z0 + Math.cos(t * 1.7 + e.ph) * 0.16;
     const sc = 1 - prog / 2.2 * 0.7;
     e.m.scale.set(sc, sc, sc);
   }
