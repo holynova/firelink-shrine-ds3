@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="360" viewBox="0 0 1200 360"
+     role="img" aria-labelledby="title desc">
+  <title id="title">传火祭祀场 Firelink Shrine · 黑暗之魂3 3D导览</title>
+  <desc id="desc">深色余烬底标题：传火祭祀场；右侧是五王座半圆形高台与中央篝火示意：五张各不相同的王座呈弧形，中央是插着螺旋剑的篝火。</desc>
+
+  <rect width="1200" height="360" rx="26" fill="#0d0f14"/>
+
+  <g id="title-block" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">
+    <text x="56" y="62" font-size="19" letter-spacing="3" fill="#ff8c2e">DARK SOULS 3 · THREE.JS 实时渲染</text>
+    <text x="56" y="128" font-size="62" font-weight="700" fill="#f2f4f8">传火祭祀场</text>
+    <text x="56" y="168" font-size="23" fill="#c8d0dc">FIRELINK SHRINE — 黑暗之魂3 · 3D 导览</text>
+    <text x="56" y="204" font-size="19" fill="#98a4b3">圆形穹顶大厅、五王座、篝火与钟塔，43 个部件逐一参观。</text>
+    <g id="chips" font-size="18" fill="#dfe5ee" text-anchor="middle">
+      <g><rect x="56" y="238" width="126" height="36" rx="18" fill="#171310" stroke="#3a2c1c" stroke-width="1.5"/><text x="119" y="262">43 个部件</text></g>
+      <g><rect x="194" y="238" width="108" height="36" rx="18" fill="#171310" stroke="#3a2c1c" stroke-width="1.5"/><text x="248" y="262">4 个视角</text></g>
+      <g><rect x="314" y="238" width="96" height="36" rx="18" fill="#171310" stroke="#3a2c1c" stroke-width="1.5"/><text x="362" y="262">五王座</text></g>
+      <g><rect x="422" y="238" width="108" height="36" rx="18" fill="#171310" stroke="#3a2c1c" stroke-width="1.5"/><text x="476" y="262">分层展开</text></g>
+    </g>
+  </g>
+
+  <g id="shrine" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">
+    <!-- labels first: they sit on the dark background -->
+    <g id="labels" text-anchor="middle">
+      <text x="980" y="66" font-size="18" fill="#ffb066">五王座 · 半圆形高台</text>
+      <text x="980" y="336" font-size="18" fill="#ffb066">中央篝火 · 螺旋剑</text>
+    </g>
+    <!-- dais -->
+    <ellipse cx="980" cy="212" rx="190" ry="26" fill="#1a1512" stroke="#3a2c1c" stroke-width="2"/>
+    <!-- throne 1: red cloth -->
+    <g transform="translate(838 128)">
+      <rect x="-17" y="0" width="34" height="58" rx="4" fill="#6b655c"/>
+      <polygon points="-17,0 17,0 13,44 -13,44" fill="#a03028"/>
+      <rect x="-20" y="58" width="40" height="10" rx="2" fill="#6b655c"/>
+    </g>
+    <!-- throne 2: small plain (Ludleth) -->
+    <g transform="translate(908 142)">
+      <rect x="-13" y="0" width="26" height="42" rx="4" fill="#8a7f70"/>
+      <rect x="-16" y="42" width="32" height="9" rx="2" fill="#8a7f70"/>
+      <circle cx="0" cy="20" r="6" fill="#c8b89a"/>
+    </g>
+    <!-- throne 3: charred tallest -->
+    <g transform="translate(980 96)">
+      <rect x="-19" y="0" width="38" height="82" rx="4" fill="#232326"/>
+      <polygon points="-19,82 -8,40 0,66 8,34 19,82" fill="#3a2c1c"/>
+      <rect x="-22" y="82" width="44" height="10" rx="2" fill="#232326"/>
+    </g>
+    <!-- throne 4: swords -->
+    <g transform="translate(1052 142)">
+      <rect x="-13" y="0" width="26" height="42" rx="4" fill="#6b655c"/>
+      <rect x="-16" y="42" width="32" height="9" rx="2" fill="#6b655c"/>
+      <line x1="-20" y1="8" x2="-14" y2="44" stroke="#b8b0a0" stroke-width="3"/>
+      <line x1="20" y1="8" x2="14" y2="44" stroke="#b8b0a0" stroke-width="3"/>
+    </g>
+    <!-- throne 5: giant -->
+    <g transform="translate(1122 118)">
+      <rect x="-21" y="0" width="42" height="72" rx="4" fill="#6b655c"/>
+      <rect x="-25" y="72" width="50" height="10" rx="2" fill="#6b655c"/>
+    </g>
+    <!-- bonfire -->
+    <g id="bonfire" transform="translate(980 258)">
+      <ellipse cx="0" cy="30" rx="58" ry="13" fill="#3a332c" stroke="#55504a" stroke-width="2"/>
+      <ellipse cx="0" cy="26" rx="40" ry="8" fill="#171310"/>
+      <rect x="-4" y="-34" width="8" height="58" fill="#b8b0a0"/>
+      <rect x="-14" y="-20" width="28" height="5" rx="2" fill="#8a8272"/>
+      <polygon points="0,-52 -14,-8 -6,-8 0,-24 6,-8 14,-8" fill="#ff8c2e"/>
+      <polygon points="0,-40 -7,-10 -3,-10 0,-20 3,-10 7,-10" fill="#f9d879"/>
+    </g>
+  </g>
+</svg>
